@@ -1,0 +1,39 @@
+// Plantbase — Prisma séma.
+// A `products` katalógus tábla. A mezőnevek snake_case-ben egyeznek a seed
+// (plants.ts) kulcsaival és a stack.md sémájával, így a Prisma mező- és az
+// oszlopnév azonos. A Prisma a RW kapcsolatot (DATABASE_URL) használja
+// sémához / migrációhoz / seedhez; az agent runSql-je NEM ezen fut (architektura.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                Int      @id @default(autoincrement())
+  name              String
+  latin_name        String
+  category          String
+  location          String
+  price             Decimal
+  sale_price        Decimal?
+  stock             Int
+  light             String
+  watering          String
+  difficulty        String
+  current_height_cm Int
+  max_height_cm     Int
+  current_pot_cm    Int
+  pet_safe          Boolean
+  kid_safe          Boolean
+  air_purifying     Boolean
+  rating            Decimal
+  reviews_count     Int
+  description       String
+
+  @@map("products")
+}
