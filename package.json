@@ -4,15 +4,17 @@
   "license": "MIT",
   "scripts": {},
   "private": true,
-  "dependencies": {},
   "devDependencies": {
+    "@nx/esbuild": "23.0.1",
     "@nx/js": "23.0.1",
+    "@nx/node": "23.0.1",
     "@nx/vitest": "23.0.1",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "~4.1.0",
+    "esbuild": "^0.27.0",
     "nx": "23.0.1",
     "prettier": "^3.8.1",
     "tslib": "^2.3.0",
@@ -25,5 +27,6 @@
       "@swc/core",
       "nx"
     ]
-  }
+  },
+  "dependencies": {}
 }
