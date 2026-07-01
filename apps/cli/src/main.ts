@@ -11,12 +11,21 @@ import {
   askAgent,
   closePool,
   createJsonlLogger,
+  resolveProjectRoot,
   type AgentResult,
   type InteractionLogger,
 } from '@plantbase/core';
 import { Command } from 'commander';
+import { join } from 'node:path';
 import * as readline from 'node:readline/promises';
 import { isExitCommand } from './lib/echo.js';
+
+/** Naplózó a monorepo gyökér logs/ mappájába (a futtatási könyvtártól függetlenül). */
+function createSessionLogger(): InteractionLogger {
+  const logger = createJsonlLogger({ dir: join(resolveProjectRoot(), 'logs') });
+  console.error(`Napló: ${logger.filePath}`);
+  return logger;
+}
 
 /** Átláthatóság: a modellnek küldött teljes kontextus kiírása (--show-prompt). */
 function printPromptContext(result: AgentResult): void {
@@ -90,7 +99,7 @@ async function main(): Promise<void> {
         options: { showPrompt?: boolean },
       ) => {
         const showPrompt = options.showPrompt === true;
-        const logger = createJsonlLogger();
+        const logger = createSessionLogger();
         if (question && question.trim().length > 0) {
           await handleQuestion(question, showPrompt, logger);
           return;

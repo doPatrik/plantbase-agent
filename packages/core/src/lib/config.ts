@@ -2,10 +2,11 @@
 // A titkok kizárólag a repo-gyökér .env-jében élnek; azt innen keressük meg
 // (find-up), hogy a CLI bárhonnan indítható legyen a monorepón belül.
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parse as parseDotenv } from 'dotenv';
 import { z } from 'zod';
+import { findUp } from './paths.js';
 
 /** Az agenthez szükséges, validált konfiguráció. */
 export interface AgentConfig {
@@ -22,24 +23,16 @@ const envSchema = z.object({
   ANTHROPIC_MODEL: z.string().min(1).optional(),
 });
 
-/** Felfelé haladva megkeresi a legközelebbi .env fájlt, és beolvassa a benne
- *  lévő változókat (a már beállított process.env értékeket nem írja felül). */
+/** Megkeresi a legközelebbi .env fájlt (find-up), és beolvassa a benne lévő
+ *  változókat (a már beállított process.env értékeket nem írja felül). */
 function loadDotenvFromNearest(startDir: string): void {
-  let dir = startDir;
-  for (;;) {
-    const candidate = join(dir, '.env');
-    if (existsSync(candidate)) {
-      const parsed = parseDotenv(readFileSync(candidate));
-      for (const [key, value] of Object.entries(parsed)) {
-        if (process.env[key] === undefined) {
-          process.env[key] = value;
-        }
-      }
-      return;
+  const dir = findUp('.env', startDir);
+  if (!dir) return;
+  const parsed = parseDotenv(readFileSync(join(dir, '.env')));
+  for (const [key, value] of Object.entries(parsed)) {
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
     }
-    const parent = dirname(dir);
-    if (parent === dir) return; // elértük a filerendszer gyökerét
-    dir = parent;
   }
 }
 
