@@ -15,6 +15,10 @@ Nx + pnpm. Munkaterületek:
 ```bash
 pnpm install
 
+# Lokális Postgres (docker-compose: RW 'plantbase' + RO 'plantbase_ro', host port 5433):
+docker compose up -d          # csak ha nincs már futó Postgres a gépeden
+cp .env.example .env          # majd töltsd ki az ANTHROPIC_API_KEY-t
+
 # Adatbázis (a Prisma a packages/db-ben van, ezért a gyökér .env-et be kell tölteni):
 set -a; . ./.env; set +a
 pnpm --filter @plantbase/db exec prisma migrate dev --schema=prisma/schema.prisma

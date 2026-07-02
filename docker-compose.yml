@@ -1,0 +1,32 @@
+# Plantbase — lokális Postgres (architektura.md 5. pont, stack.md).
+# Két jog, egy adatbázis:
+#   - RW user (plantbase): a Postgres image env-jeiből jön létre, ő az owner
+#     (Prisma ezzel viszi a sémát/migrációt/seedet a DATABASE_URL-en).
+#   - RO user (plantbase_ro): a docker/initdb/ SQL hozza létre, csak SELECT
+#     (az agent runSql-je ezen fut a DATABASE_URL_READONLY-n, NFR1).
+# Host port 5433 → konténer 5432 (a 5432-t egy másik projekt foglalhatja).
+# Indítás: `docker compose up -d`, majd `cp .env.example .env`.
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: plantbase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: plantbase
+      POSTGRES_PASSWORD: plantbase
+      POSTGRES_DB: plantbase
+    ports:
+      - '5433:5432'
+    volumes:
+      - plantbase-pgdata:/var/lib/postgresql/data
+      # Az initdb szkriptek CSAK az első indításkor futnak (üres adatkönyvtár).
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U plantbase -d plantbase']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  plantbase-pgdata:
