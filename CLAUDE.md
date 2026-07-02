@@ -29,6 +29,11 @@ pnpm --filter @plantbase/cli exec tsx src/main.ts ask "Hány pozsgás van raktá
 pnpm --filter @plantbase/cli exec tsx src/main.ts               # interaktív, "exit"/Ctrl+D
 #   --show-prompt: a teljes system prompt + üzenettömb kiírása
 
+# CLI prod-módon a gyökérből (buildelt artefakt, nem tsx):
+pnpm plantbase:build                        # nx build cli → apps/cli/dist/main.js (+ core dist)
+pnpm plantbase ask "Milyen kategóriák vannak?"
+pnpm plantbase                              # interaktív
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build
