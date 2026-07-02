@@ -84,3 +84,33 @@ export async function runSql(
   const result = await pool.query(query);
   return result.rows as SqlRow[];
 }
+
+/** A kategóriákat lekérdező fix, biztonságos SELECT (rendezett, distinct). */
+const CATEGORIES_QUERY =
+  'SELECT DISTINCT category FROM products ORDER BY category';
+
+export interface ListCategoriesOptions extends RunSqlOptions {
+  /** Injektálható lekérdezés-futtató teszthez; alapból a read-only runSql. */
+  readonly runSql?: (
+    query: string,
+    options?: RunSqlOptions,
+  ) => Promise<SqlRow[]>;
+}
+
+/**
+ * Visszaadja a katalógusban ténylegesen előforduló kategóriák hiteles,
+ * ábécé-rendezett listáját. A fix lekérdezést a `runSql`-en át futtatja, így
+ * a read-only kapcsolatot és az `assertSelectOnly` guardot is örökli.
+ * @throws {Error} ha nincs read-only kapcsolat, vagy SQL hiba.
+ */
+export async function listCategories(
+  options: ListCategoriesOptions = {},
+): Promise<string[]> {
+  const run = options.runSql ?? runSql;
+  const rows = await run(CATEGORIES_QUERY, {
+    connectionString: options.connectionString,
+  });
+  return rows
+    .map((row) => row.category)
+    .filter((category): category is string => typeof category === 'string');
+}

@@ -17,7 +17,7 @@ Te a Plantbase asszisztens vagy: egy lakberendezőnek (és otthoni felhasználó
 const SCHEMA = `<schema>
 products (
   id, name, latin_name,
-  category,                              -- szobanövény / kerti / pozsgás / kaktusz / fűszer / fa-cserje / lógó / virágzó
+  category,                              -- pl. szobanövény / kerti / pozsgás / kaktusz / fűszer / fa-cserje / lógó / virágzó (csak emlékeztető; a hiteles listát a listCategories adja)
   location,                              -- beltéri / kültéri / mindkettő
   price, sale_price, stock,              -- ár, akciós ár (null ha nincs), raktárkészlet
   light,                                 -- árnyék / alacsony / közepes / erős / direkt nap
@@ -42,6 +42,7 @@ const RULES_WITH_DB = `<rules>
 - Raktár: ha "raktáron" a kérés, szűrj stock > 0-ra.
 - Méret: current_height_cm az aktuális, max_height_cm a kifejlett magasság, current_pot_cm a cserépméret.
 - Gondozás: light (fény), watering (öntözés), difficulty (nehézség), pet_safe (háziállat-barát).
+- Kategóriák: ha kategóriára szűrsz vagy a kategóriákról kérdeznek, előbb a listCategories toollal kérd le a valódi értékeket — a séma kategória-felsorolása csak emlékeztető, elavulhat.
 </rules>`;
 
 const BEHAVIOR_WITH_DB = `<behavior>
@@ -54,6 +55,7 @@ const BEHAVIOR_WITH_DB = `<behavior>
 
 const TOOLS_WITH_DB = `<tools>
 - runSql(query): read-only SQL futtatás a katalóguson. A generált SQL-t mindig ezzel futtasd, ne csak kiírd.
+- listCategories(): a katalógusban ténylegesen előforduló kategóriák hiteles, ábécé-rendezett listája. Kategóriára szűrésnél / kategória-kérdésnél ezt használd, ne a séma-komment felsorolását.
 </tools>`;
 
 const SITUATION_NO_DB = `<helyzet>

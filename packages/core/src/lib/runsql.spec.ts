@@ -1,4 +1,4 @@
-import { assertSelectOnly } from './runsql.js';
+import { assertSelectOnly, listCategories } from './runsql.js';
 
 describe('assertSelectOnly', () => {
   it('should allow a simple SELECT', () => {
@@ -49,5 +49,43 @@ describe('assertSelectOnly', () => {
 
   it('should reject an empty query', () => {
     expect(() => assertSelectOnly('   ')).toThrow();
+  });
+});
+
+describe('listCategories', () => {
+  it('should run the fixed DISTINCT category query ordered by category', async () => {
+    const calls: string[] = [];
+    await listCategories({
+      runSql: async (query) => {
+        calls.push(query);
+        return [];
+      },
+    });
+    expect(calls).toEqual([
+      'SELECT DISTINCT category FROM products ORDER BY category',
+    ]);
+  });
+
+  it('should map result rows to a plain string array of category names', async () => {
+    const result = await listCategories({
+      runSql: async () => [
+        { category: 'fűszer' },
+        { category: 'kaktusz' },
+        { category: 'pozsgás' },
+      ],
+    });
+    expect(result).toEqual(['fűszer', 'kaktusz', 'pozsgás']);
+  });
+
+  it('should pass the read-only connectionString through to runSql', async () => {
+    let received: string | undefined;
+    await listCategories({
+      connectionString: 'postgres://ro@localhost/plantbase_ro',
+      runSql: async (_query, options) => {
+        received = options?.connectionString;
+        return [];
+      },
+    });
+    expect(received).toBe('postgres://ro@localhost/plantbase_ro');
   });
 });

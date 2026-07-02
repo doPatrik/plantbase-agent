@@ -19,6 +19,10 @@ describe('buildSystemPrompt', () => {
       expect(prompt).not.toContain('runSql');
       expect(prompt).not.toContain('<schema>');
     });
+
+    it('should NOT mention the listCategories tool', () => {
+      expect(prompt).not.toContain('listCategories');
+    });
   });
 
   describe('when the database is available (B3)', () => {
@@ -32,6 +36,15 @@ describe('buildSystemPrompt', () => {
 
     it('should enforce SELECT-only in the rules', () => {
       expect(prompt).toContain('CSAK SELECT');
+    });
+
+    it('should describe the listCategories tool', () => {
+      expect(prompt).toContain('listCategories');
+    });
+
+    it('should instruct to prefer listCategories over the static schema hint for categories', () => {
+      expect(prompt).toMatch(/listCategories/);
+      expect(prompt).toMatch(/emlékeztető|hint/i);
     });
   });
 });
