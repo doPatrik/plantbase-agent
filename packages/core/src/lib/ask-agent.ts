@@ -8,7 +8,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { AgentConfig, loadConfig } from './config.js';
 import { buildSystemPrompt } from './schema-context.js';
-import { runSql as executeSql, type SqlRow } from './runsql.js';
+import {
+  runSql as executeSql,
+  listCategories as executeListCategories,
+  type SqlRow,
+} from './runsql.js';
 import { InteractionLogger, nullLogger } from './logger.js';
 
 /** Az Anthropic kliens minimális felülete, amit az askAgent használ
@@ -24,6 +28,9 @@ export interface AnthropicLike {
 /** A runSql tool futtatója (injektálható teszthez). */
 export type RunSqlFn = (query: string) => Promise<SqlRow[]>;
 
+/** A listCategories tool futtatója (injektálható teszthez). */
+export type ListCategoriesFn = () => Promise<string[]>;
+
 export interface AskAgentOptions {
   /** Validált konfiguráció; ha hiányzik, a process.env-ből töltjük be. */
   readonly config?: AgentConfig;
@@ -31,6 +38,8 @@ export interface AskAgentOptions {
   readonly client?: AnthropicLike;
   /** runSql futtató; alapból a read-only pg alapú runSql. */
   readonly runSql?: RunSqlFn;
+  /** listCategories futtató; alapból a read-only pg alapú listCategories. */
+  readonly listCategories?: ListCategoriesFn;
   /** Interakció-napló (FR4); alapból nem naplóz. */
   readonly logger?: InteractionLogger;
   /** Tool-use körök felső korlátja (végtelen loop ellen). */
@@ -65,6 +74,16 @@ const RUN_SQL_TOOL: Anthropic.Tool = {
   },
 };
 
+const LIST_CATEGORIES_TOOL: Anthropic.Tool = {
+  name: 'listCategories',
+  description:
+    'A katalógusban ténylegesen előforduló növénykategóriák hiteles, ábécé-rendezett listája (a products.category distinct értékei). Használd, ha kategóriára szűrsz vagy a kategóriákról kérdeznek — ne a séma-komment felsorolására hagyatkozz. Nincs bemeneti paramétere.',
+  input_schema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
 const toolInputSchema = z.object({ query: z.string().min(1) });
 
 /** A válasz szöveges tartalmának kinyerése a content blokkokból. */
@@ -88,6 +107,7 @@ export async function askAgent(
   const config = options.config ?? loadConfig();
   const client = options.client ?? new Anthropic({ apiKey: config.apiKey });
   const runSql = options.runSql ?? executeSql;
+  const listCategories = options.listCategories ?? executeListCategories;
   const logger = options.logger ?? nullLogger;
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
 
@@ -110,7 +130,7 @@ export async function askAgent(
       max_tokens: config.maxTokens,
       system: systemPrompt,
       messages,
-      tools: [RUN_SQL_TOOL],
+      tools: [RUN_SQL_TOOL, LIST_CATEGORIES_TOOL],
     });
     inputTokens += response.usage.input_tokens;
     outputTokens += response.usage.output_tokens;
@@ -129,43 +149,89 @@ export async function askAgent(
 
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of response.content) {
-      if (block.type !== 'tool_use' || block.name !== 'runSql') {
+      if (block.type !== 'tool_use') {
         continue;
       }
-      const parsed = toolInputSchema.safeParse(block.input);
       let content: string;
       let isError = false;
-      if (!parsed.success) {
-        content = `Érvénytelen runSql input: ${parsed.error.issues
-          .map((i) => i.message)
-          .join('; ')}`;
-        isError = true;
-        logger.event({
-          type: 'tool_error',
-          tool_use_id: block.id,
-          error: content,
-        });
-      } else {
-        const query = parsed.data.query;
-        logger.event({ type: 'tool_use', tool_use_id: block.id, sql: query });
-        try {
-          const rows = await runSql(query);
-          content = JSON.stringify(rows);
-          logger.event({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            row_count: rows.length,
-          });
-        } catch (error: unknown) {
-          content = `SQL hiba: ${error instanceof Error ? error.message : String(error)}`;
+
+      if (block.name === 'runSql') {
+        const parsed = toolInputSchema.safeParse(block.input);
+        if (!parsed.success) {
+          content = `Érvénytelen runSql input: ${parsed.error.issues
+            .map((i) => i.message)
+            .join('; ')}`;
           isError = true;
           logger.event({
             type: 'tool_error',
+            tool: 'runSql',
+            tool_use_id: block.id,
+            error: content,
+          });
+        } else {
+          const query = parsed.data.query;
+          logger.event({
+            type: 'tool_use',
+            tool: 'runSql',
+            tool_use_id: block.id,
+            sql: query,
+          });
+          try {
+            const rows = await runSql(query);
+            content = JSON.stringify(rows);
+            logger.event({
+              type: 'tool_result',
+              tool: 'runSql',
+              tool_use_id: block.id,
+              row_count: rows.length,
+            });
+          } catch (error: unknown) {
+            content = `SQL hiba: ${error instanceof Error ? error.message : String(error)}`;
+            isError = true;
+            logger.event({
+              type: 'tool_error',
+              tool: 'runSql',
+              tool_use_id: block.id,
+              error: content,
+            });
+          }
+        }
+      } else if (block.name === 'listCategories') {
+        logger.event({
+          type: 'tool_use',
+          tool: 'listCategories',
+          tool_use_id: block.id,
+        });
+        try {
+          const categories = await listCategories();
+          content = JSON.stringify(categories);
+          logger.event({
+            type: 'tool_result',
+            tool: 'listCategories',
+            tool_use_id: block.id,
+            row_count: categories.length,
+          });
+        } catch (error: unknown) {
+          content = `Kategória-lekérdezés hiba: ${error instanceof Error ? error.message : String(error)}`;
+          isError = true;
+          logger.event({
+            type: 'tool_error',
+            tool: 'listCategories',
             tool_use_id: block.id,
             error: content,
           });
         }
+      } else {
+        content = `Ismeretlen tool: ${block.name}`;
+        isError = true;
+        logger.event({
+          type: 'tool_error',
+          tool: block.name,
+          tool_use_id: block.id,
+          error: content,
+        });
       }
+
       toolResults.push({
         type: 'tool_result',
         tool_use_id: block.id,

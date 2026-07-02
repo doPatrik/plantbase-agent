@@ -37,6 +37,32 @@ function toolUseResponse(id: string, query: string): Anthropic.Message {
   } as unknown as Anthropic.Message;
 }
 
+function listCategoriesToolUse(id: string): Anthropic.Message {
+  return {
+    id: 'msg',
+    type: 'message',
+    role: 'assistant',
+    model: config.model,
+    stop_reason: 'tool_use',
+    stop_sequence: null,
+    content: [{ type: 'tool_use', id, name: 'listCategories', input: {} }],
+    usage,
+  } as unknown as Anthropic.Message;
+}
+
+function unknownToolUse(id: string, name: string): Anthropic.Message {
+  return {
+    id: 'msg',
+    type: 'message',
+    role: 'assistant',
+    model: config.model,
+    stop_reason: 'tool_use',
+    stop_sequence: null,
+    content: [{ type: 'tool_use', id, name, input: {} }],
+    usage,
+  } as unknown as Anthropic.Message;
+}
+
 /** Fake kliens, ami egy előre megadott válasz-sorozatot ad vissza, és rögzíti a hívásokat. */
 function scriptedClient(responses: Anthropic.Message[]): {
   client: AnthropicLike;
@@ -161,5 +187,82 @@ describe('askAgent (B3, tool-use loop)', () => {
     expect(types).toContain('tool_use');
     expect(types).toContain('tool_result');
     expect(types).toContain('final');
+  });
+});
+
+describe('askAgent (listCategories tool)', () => {
+  it('should offer both the runSql and listCategories tools', async () => {
+    const { client, calls } = scriptedClient([textResponse('kész')]);
+    await askAgent('kérdés', {
+      config,
+      client,
+      runSql: async () => [],
+      listCategories: async () => [],
+    });
+    const toolNames = calls[0].tools?.map((tool) => tool.name);
+    expect(toolNames).toContain('runSql');
+    expect(toolNames).toContain('listCategories');
+  });
+
+  it('should call listCategories on tool_use, feed the result back, and answer', async () => {
+    let called = 0;
+    const { client, calls } = scriptedClient([
+      listCategoriesToolUse('cat_1'),
+      textResponse('A kategóriák: fűszer, kaktusz.'),
+    ]);
+
+    const result = await askAgent('Milyen kategóriák vannak?', {
+      config,
+      client,
+      runSql: async () => [],
+      listCategories: async () => {
+        called++;
+        return ['fűszer', 'kaktusz'];
+      },
+    });
+
+    expect(called).toBe(1);
+    expect(result.text).toBe('A kategóriák: fűszer, kaktusz.');
+
+    const block = (
+      calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]
+    )[0];
+    expect(block.type).toBe('tool_result');
+    expect(block.tool_use_id).toBe('cat_1');
+    expect(block.content).toContain('fűszer');
+  });
+
+  it('should record which tool ran in the tool_use log event', async () => {
+    const { logger, events } = memoryLogger();
+    const { client } = scriptedClient([
+      listCategoriesToolUse('c1'),
+      textResponse('ok'),
+    ]);
+    await askAgent('q', {
+      config,
+      client,
+      runSql: async () => [],
+      listCategories: async () => ['fűszer'],
+      logger,
+    });
+    const toolUse = events.find((e) => e.type === 'tool_use');
+    expect(toolUse?.tool).toBe('listCategories');
+  });
+
+  it('should return an is_error tool_result for an unknown tool', async () => {
+    const { client, calls } = scriptedClient([
+      unknownToolUse('u1', 'dropEverything'),
+      textResponse('Nem tudom végrehajtani.'),
+    ]);
+    await askAgent('q', {
+      config,
+      client,
+      runSql: async () => [],
+      listCategories: async () => [],
+    });
+    const block = (
+      calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]
+    )[0];
+    expect(block.is_error).toBe(true);
   });
 });
