@@ -55,8 +55,8 @@ describe('buildSystemPrompt', () => {
       expect(prompt).toMatch(/description[^\n]*csak akkor kérd le/i);
     });
 
-    it('should default to a tight LIMIT', () => {
-      expect(prompt).toMatch(/alapból 10/);
+    it('should default to a tight LIMIT with a ceiling', () => {
+      expect(prompt).toMatch(/alapból 10.*max 50/);
     });
 
     it('should handle the empty-result case', () => {
