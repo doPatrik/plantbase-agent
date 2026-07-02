@@ -1,18 +1,22 @@
-// Az agent belépési pontja (B3 fázis): kézzel írt tool-use loop a runSql toollal.
-// A felhasználó kérdését elküldi a modellnek a teljes Plantbase system prompttal
-// (products séma + SQL-szabályok + runSql tool). Amíg a modell tool_use-t kér,
-// lefuttatjuk a runSql-t (read-only), és a tool_result-ot visszaküldjük — amíg
-// végleges szöveges válasz nem születik. Nincs agent-framework (architektura.md).
+// Az agent belépési pontja (B3 fázis): kézzel írt tool-use loop. A felhasználó
+// kérdését elküldi a modellnek a teljes Plantbase system prompttal (products séma
+// + SQL-szabályok + toolok). Amíg a modell tool_use-t kér, a megfelelő toolt
+// lefuttatjuk (read-only), és a tool_result-ot visszaküldjük — amíg végleges
+// szöveges válasz nem születik. A toolokat egy registry (agent-tools.ts) adja, a
+// loop név szerint dispatch-el; nincs agent-framework (architektura.md).
 
 import Anthropic from '@anthropic-ai/sdk';
-import { z } from 'zod';
 import { AgentConfig, loadConfig } from './config.js';
 import { buildSystemPrompt } from './schema-context.js';
 import {
   runSql as executeSql,
   listCategories as executeListCategories,
-  type SqlRow,
 } from './runsql.js';
+import {
+  buildAgentTools,
+  type ListCategoriesFn,
+  type RunSqlFn,
+} from './agent-tools.js';
 import { InteractionLogger, nullLogger } from './logger.js';
 
 /** Az Anthropic kliens minimális felülete, amit az askAgent használ
@@ -25,11 +29,7 @@ export interface AnthropicLike {
   };
 }
 
-/** A runSql tool futtatója (injektálható teszthez). */
-export type RunSqlFn = (query: string) => Promise<SqlRow[]>;
-
-/** A listCategories tool futtatója (injektálható teszthez). */
-export type ListCategoriesFn = () => Promise<string[]>;
+export type { RunSqlFn, ListCategoriesFn } from './agent-tools.js';
 
 export interface AskAgentOptions {
   /** Validált konfiguráció; ha hiányzik, a process.env-ből töltjük be. */
@@ -58,34 +58,6 @@ export interface AgentResult {
 
 const DEFAULT_MAX_STEPS = 8;
 
-const RUN_SQL_TOOL: Anthropic.Tool = {
-  name: 'runSql',
-  description:
-    'Read-only SQL futtatása a products katalóguson. A generált SELECT-et mindig ezzel futtasd, ne csak írd ki. Csak SELECT engedélyezett; az eredmény JSON sorok tömbje.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'A futtatandó PostgreSQL SELECT lekérdezés.',
-      },
-    },
-    required: ['query'],
-  },
-};
-
-const LIST_CATEGORIES_TOOL: Anthropic.Tool = {
-  name: 'listCategories',
-  description:
-    'A katalógusban ténylegesen előforduló növénykategóriák hiteles, ábécé-rendezett listája (a products.category distinct értékei). Használd, ha kategóriára szűrsz vagy a kategóriákról kérdeznek — ne a séma-komment felsorolására hagyatkozz. Nincs bemeneti paramétere.',
-  input_schema: {
-    type: 'object',
-    properties: {},
-  },
-};
-
-const toolInputSchema = z.object({ query: z.string().min(1) });
-
 /** A válasz szöveges tartalmának kinyerése a content blokkokból. */
 function extractText(content: Anthropic.ContentBlock[]): string {
   return content
@@ -111,6 +83,12 @@ export async function askAgent(
   const logger = options.logger ?? nullLogger;
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
 
+  const tools = buildAgentTools({ runSql, listCategories });
+  const toolsByName = new Map(
+    tools.map((tool) => [tool.definition.name, tool]),
+  );
+  const toolDefinitions = tools.map((tool) => tool.definition);
+
   const systemPrompt = buildSystemPrompt({ databaseAvailable: true });
   const messages: Anthropic.MessageParam[] = [
     { role: 'user', content: question },
@@ -130,7 +108,7 @@ export async function askAgent(
       max_tokens: config.maxTokens,
       system: systemPrompt,
       messages,
-      tools: [RUN_SQL_TOOL, LIST_CATEGORIES_TOOL],
+      tools: toolDefinitions,
     });
     inputTokens += response.usage.input_tokens;
     outputTokens += response.usage.output_tokens;
@@ -152,76 +130,17 @@ export async function askAgent(
       if (block.type !== 'tool_use') {
         continue;
       }
+      logger.event({
+        type: 'tool_use',
+        tool: block.name,
+        tool_use_id: block.id,
+        input: block.input,
+      });
+
       let content: string;
       let isError = false;
-
-      if (block.name === 'runSql') {
-        const parsed = toolInputSchema.safeParse(block.input);
-        if (!parsed.success) {
-          content = `Érvénytelen runSql input: ${parsed.error.issues
-            .map((i) => i.message)
-            .join('; ')}`;
-          isError = true;
-          logger.event({
-            type: 'tool_error',
-            tool: 'runSql',
-            tool_use_id: block.id,
-            error: content,
-          });
-        } else {
-          const query = parsed.data.query;
-          logger.event({
-            type: 'tool_use',
-            tool: 'runSql',
-            tool_use_id: block.id,
-            sql: query,
-          });
-          try {
-            const rows = await runSql(query);
-            content = JSON.stringify(rows);
-            logger.event({
-              type: 'tool_result',
-              tool: 'runSql',
-              tool_use_id: block.id,
-              row_count: rows.length,
-            });
-          } catch (error: unknown) {
-            content = `SQL hiba: ${error instanceof Error ? error.message : String(error)}`;
-            isError = true;
-            logger.event({
-              type: 'tool_error',
-              tool: 'runSql',
-              tool_use_id: block.id,
-              error: content,
-            });
-          }
-        }
-      } else if (block.name === 'listCategories') {
-        logger.event({
-          type: 'tool_use',
-          tool: 'listCategories',
-          tool_use_id: block.id,
-        });
-        try {
-          const categories = await listCategories();
-          content = JSON.stringify(categories);
-          logger.event({
-            type: 'tool_result',
-            tool: 'listCategories',
-            tool_use_id: block.id,
-            row_count: categories.length,
-          });
-        } catch (error: unknown) {
-          content = `Kategória-lekérdezés hiba: ${error instanceof Error ? error.message : String(error)}`;
-          isError = true;
-          logger.event({
-            type: 'tool_error',
-            tool: 'listCategories',
-            tool_use_id: block.id,
-            error: content,
-          });
-        }
-      } else {
+      const tool = toolsByName.get(block.name);
+      if (!tool) {
         content = `Ismeretlen tool: ${block.name}`;
         isError = true;
         logger.event({
@@ -230,6 +149,24 @@ export async function askAgent(
           tool_use_id: block.id,
           error: content,
         });
+      } else {
+        try {
+          content = await tool.run(block.input);
+          logger.event({
+            type: 'tool_result',
+            tool: block.name,
+            tool_use_id: block.id,
+          });
+        } catch (error: unknown) {
+          content = error instanceof Error ? error.message : String(error);
+          isError = true;
+          logger.event({
+            type: 'tool_error',
+            tool: block.name,
+            tool_use_id: block.id,
+            error: content,
+          });
+        }
       }
 
       toolResults.push({
