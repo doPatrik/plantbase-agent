@@ -41,7 +41,10 @@ Végponttól végpontig: a felhasználó rákérdez a kategóriákra (vagy kateg
 
 None - can start immediately.
 
+## Megvalósítási megjegyzés
+
+A loop tool-dispatch-e nem az eredetileg tervezett explicit `if/else if` ágakkal, hanem **tool-registryvel** készült (minden tool = definíció + `run` handler egy `Map`-ben) — lásd [ADR-0001](../adr/0001-tool-registry-dispatch.md). Így a loop mérete tool-számtól független.
+
 ## Future extension (nem most, YAGNI)
 
 - Kategóriánkénti darabszám (`SELECT category, COUNT(*) … GROUP BY category`) — külön jegyben, ha kell.
-- Tool-registry (handler-map) a loopban, ha 2-nél lényegesen több tool jönne — akkor ADR-érett lehet.
