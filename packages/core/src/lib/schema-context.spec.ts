@@ -46,5 +46,25 @@ describe('buildSystemPrompt', () => {
       expect(prompt).toMatch(/listCategories/);
       expect(prompt).toMatch(/emlékeztető|hint/i);
     });
+
+    it('should forbid SELECT * to keep tool results compact', () => {
+      expect(prompt).toContain('Ne használj SELECT *');
+    });
+
+    it('should fetch description only on explicit request', () => {
+      expect(prompt).toMatch(/description[^\n]*csak akkor kérd le/i);
+    });
+
+    it('should default to a tight LIMIT with a ceiling', () => {
+      expect(prompt).toMatch(/alapból 10.*max 50/);
+    });
+
+    it('should handle the empty-result case', () => {
+      expect(prompt).toMatch(/egyetlen sort sem/i);
+    });
+
+    it('should format prices in HUF', () => {
+      expect(prompt).toMatch(/forintban|Ft\b/);
+    });
   });
 });
