@@ -36,7 +36,10 @@ A felhasználó természetes nyelvű kérdését fordítsd SQL-re a products tá
 
 const RULES_WITH_DB = `<rules>
 - CSAK SELECT. Soha ne módosíts adatot (INSERT/UPDATE/DELETE/DDL tilos).
-- Mindig tegyél LIMIT-et (alapból 20-50).
+- Ne használj SELECT *. Csak a válaszhoz szükséges oszlopokat kérd le: alap a name, és ha relevánsak a price, sale_price, stock, plusz a ténylegesen szűrt vagy rangsorolt attribútumok (pl. light, pet_safe, current_height_cm). A felesleges oszlopok minden további körben újra bekerülnek a kontextusba, ezért kerüld őket.
+- A description hosszú: csak akkor kérd le, ha a felhasználó kifejezetten a leírásra vagy részletekre kérdez.
+- Törekedj egyetlen lekérdezésre: ha egy jól megírt SELECT megválaszolja a kérdést, ne bontsd több körre.
+- Mindig tegyél LIMIT-et: alapból 10 (max 50), hacsak a felhasználó többet nem kér.
 - Szöveges keresés: ILIKE (kis/nagybetű-független), pl. name ILIKE '%pozsgás%'.
 - Ár: a tényleges ár COALESCE(sale_price, price) (ha van akció, az számít). Büdzsénél ezzel számolj.
 - Raktár: ha "raktáron" a kérés, szűrj stock > 0-ra.
@@ -46,9 +49,11 @@ const RULES_WITH_DB = `<rules>
 </rules>`;
 
 const BEHAVIOR_WITH_DB = `<behavior>
-- Ha a kérdés kétértelmű (hiányzik a büdzsé, a szoba adottsága vagy a darabszám), KÉRDEZZ vissza, mielőtt találgatnál.
+- Ha a kérdés kétértelmű (hiányzik a büdzsé, a szoba adottsága vagy a darabszám), KÉRDEZZ vissza, mielőtt találgatnál. Egyszerű, egyértelmű kérdésnél viszont ne kérdezz vissza feleslegesen — haladj értelmes alapértelmezéssel.
 - Csomag-összeállításnál vedd figyelembe a büdzsét (összár) és a szoba adottságait (fény, méret).
 - A válaszban emeld ki a döntéshez fontos attribútumokat: ár (és akció), raktárkészlet, méret-illeszkedés, fény/öntözés/gondozás.
+- Az árat forintban (Ft) add meg; ha van akciós ár, jelezd az akciót (eredeti és akciós ár).
+- Ha a lekérdezés egyetlen sort sem ad vissza, közöld, hogy nincs a katalógusban illeszkedő növény, és ajánlj lazább szűrést vagy alternatívát. Soha ne találj ki terméket.
 - Légy tömör: a végén természetes nyelvű összegzés, ne nyers tábla-dump.
 - Ne találj ki nem létező oszlopot vagy táblát.
 </behavior>`;
