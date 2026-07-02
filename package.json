@@ -2,7 +2,10 @@
   "name": "@plantbase/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "plantbase:build": "nx build cli",
+    "plantbase": "node apps/cli/dist/main.js"
+  },
   "private": true,
   "devDependencies": {
     "@nx/esbuild": "23.0.1",
