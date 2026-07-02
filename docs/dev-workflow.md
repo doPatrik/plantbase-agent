@@ -56,13 +56,13 @@ FONTOS: a hookok a **Claude Code (L1) akcióit** fogják meg (amit Claude szerke
 
 ```
 docs/
-├── ddd/
-│   ├── glossary.md        ubiquitous language (növény, kategória, fényigény, gondozás...)
-│   └── model.md           entitások, value objectek, aggregátumok
-└── tech/
-    ├── infra.md           Postgres (OrbStack docker-compose), .env, a két DB-kapcsolat
-    ├── architecture.md    core/apps, adat-elérés, read-only vs Prisma
-    └── api.md             tool/CLI felület (ask, runSql)
+├── brs-plantbase.md   üzleti követelmény-leírás (BRS) + build brief (FR/NFR, ROI)
+├── proposal.md        implementációs terv (fázisok, fix döntések, verifikáció)
+├── stack.md           tech stack + a products séma és értékkészletei
+├── architektura.md    fájlstruktúra + főbb döntések (core/apps, read-only vs Prisma)
+├── konvenciok.md      projekt-független kódkonvenciók és best practice-ek
+├── dev-workflow.md    git, hookok, /docs, dokumentáció-frissítés (ez a fájl)
+└── system-prompt.md   az agent (askAgent) XML-tagelt system promptja
 ```
 
 ## Dokumentáció-frissítés
