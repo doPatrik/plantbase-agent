@@ -9,7 +9,7 @@
 
 services:
   postgres:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     container_name: plantbase-postgres
     restart: unless-stopped
     environment:
