@@ -19,6 +19,21 @@ _Avoid_: típus, csoport, fajta
 **Kategória-szókészlet (Category vocabulary)**:
 A katalógusban ténylegesen előforduló kategóriák halmaza. Hiteles forrása a **`listCategories`** tool (a tényleges adatból); a system prompt kategória-felsorolása csak nem-hiteles emlékeztető (hint), amely elavulhat.
 
+**Tudásbázis (Knowledge base)**:
+A `seed/knowledge` növénygondozási cikkeinek beágyazott, kereshető változata. Két táblában él: `documents` (forrás-cikkenként egy sor) és `document_chunks` (chunkonként egy sor, embeddinggel).
+_Avoid_: katalógus (az a `products`), dokumentum-adatbázis
+
+**Dokumentum (Document)**:
+Egy forrás-markdown cikk a tudásbázisban (`documents` egy sora): cím, forrás-URL, kategória, tartalom-hash.
+_Avoid_: cikk, fájl (a domain-entitás neve Dokumentum)
+
+**Chunk**:
+Egy Dokumentum retrieval-egységre bontott darabja (`document_chunks` egy sora): szöveg + heading-útvonal + embedding vektor.
+_Avoid_: szelet, blokk, részlet
+
+**Embedding**:
+Egy Chunk (vagy lekérdezés) 1536 dimenziós vektor-reprezentációja (OpenAI `text-embedding-3-small`), amin a koszinusz-hasonlóságú keresés fut.
+
 ## Relationships
 
 - A **Katalógus** egy vagy több **Terméket** tartalmaz
