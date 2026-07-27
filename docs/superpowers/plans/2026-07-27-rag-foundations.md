@@ -120,20 +120,9 @@ git commit -m "feat(infra): use pgvector image and enable vector extension"
 
 - [ ] **Step 1: Extend the Prisma schema**
 
-In `packages/db/prisma/schema.prisma`, update the generator + datasource and add the two models. The `embedding` field is `Unsupported("vector(1536)")?` — Prisma never reads it (we use `pg`), and keeping it optional avoids migration drift.
+In `packages/db/prisma/schema.prisma`, add the two models. The `embedding` field is `Unsupported("vector(1536)")?` — Prisma never reads it (we use `pg`), and keeping it optional avoids migration drift.
 
-```prisma
-generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
-}
-
-datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [vector]
-}
-```
+> **Do NOT let Prisma manage the `vector` extension.** Leave the `generator` and `datasource` blocks unchanged (no `postgresqlExtensions` preview feature, no `extensions = [vector]`). The extension already exists in the DB (created out-of-band by Task 1's initdb / manual `CREATE EXTENSION`), and declaring `extensions = [vector]` makes `prisma migrate dev` report **drift** whose only offered remedy is the destructive `migrate reset`. Instead, the `CREATE EXTENSION` statement is added by hand to the migration in Step 3. `Unsupported("vector(1536)")` does not require the extension to be declared in the schema.
 
 Add below the existing `Product` model:
 
@@ -178,11 +167,18 @@ set -a; . ./.env; set +a
 pnpm --filter @plantbase/db exec prisma migrate dev --create-only --name add_knowledge_base --schema=prisma/schema.prisma
 ```
 
-Expected: a new folder `prisma/migrations/<timestamp>_add_knowledge_base/migration.sql` is created. It should contain `CREATE EXTENSION IF NOT EXISTS "vector"`, `CREATE TABLE "documents"`, `CREATE TABLE "document_chunks"` (including `"embedding" vector(1536)`), the unique index, and the FK.
+Expected: a new folder `prisma/migrations/<timestamp>_add_knowledge_base/migration.sql` is created. It contains `CREATE TABLE "documents"`, `CREATE TABLE "document_chunks"` (including `"embedding" vector(1536)`), the unique index, and the FK. It will **not** contain a `CREATE EXTENSION` line (the extension is not Prisma-managed) — that is added by hand in Step 3.
 
-- [ ] **Step 3: Append the HNSW cosine index to the migration**
+- [ ] **Step 3: Hand-edit the migration — prepend the extension, append the HNSW index**
 
-Edit the generated `migration.sql` and add at the end:
+Edit the generated `migration.sql`. Add this as the very FIRST statement (before the `CREATE TABLE`s), so the `vector(1536)` column type resolves on a fresh database / shadow DB:
+
+```sql
+-- pgvector kiterjesztés (idempotens; a shadow DB-n és friss DB-n is szükséges a vector típushoz).
+CREATE EXTENSION IF NOT EXISTS "vector";
+```
+
+And add this at the END of the file:
 
 ```sql
 -- pgvector HNSW index koszinusz-távolságra (a keresés `<=>`-t használ).
