@@ -19,7 +19,7 @@
 - Read library docs with **Context7** before using an unfamiliar API (Prisma pgvector, `ai` embeddings, `pg`).
 - Commits in **English**, Conventional Commits, small focused commits. Work on branch `feat/rag-foundations` (already created). `main` stays green.
 - Embedding dimension is fixed at **1536** (`text-embedding-3-small`).
-- Run the core test suite once (non-watch) with: `pnpm nx test-ci @plantbase/core`.
+- Run the core test suite once (non-watch) with: `pnpm nx test @plantbase/core -- --run`.
 
 ---
 
@@ -300,7 +300,7 @@ describe('loadRagConfig', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: FAIL — `loadEmbeddingConfig` / `loadRagConfig` are not exported.
 
 - [ ] **Step 3: Implement the two loaders**
@@ -389,7 +389,7 @@ export function loadRagConfig(cwd: string = process.cwd()): RagConfig {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: PASS (all config tests, including the original `loadConfig` ones).
 
 - [ ] **Step 5: Commit**
@@ -476,7 +476,7 @@ describe('embedQuery', () => {
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: FAIL — `./embedding.js` does not exist.
 
 - [ ] **Step 4: Implement the module**
@@ -552,7 +552,7 @@ export * from './lib/embedding.js';
 
 - [ ] **Step 6: Run the test to verify it passes**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
@@ -729,7 +729,7 @@ describe('getChunkStats', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: FAIL — `./knowledge-store.js` does not exist.
 
 - [ ] **Step 3: Implement the module**
@@ -1014,7 +1014,7 @@ export * from './lib/knowledge-store.js';
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `pnpm nx test-ci @plantbase/core`
+Run: `pnpm nx test @plantbase/core -- --run`
 Expected: PASS.
 
 - [ ] **Step 6: Typecheck the core package**
@@ -1092,7 +1092,7 @@ In `CLAUDE.md`, under `## Monorepo`, note the planned apps/libs and add a pgvect
 
 - [ ] **Step 4: Verify the full monorepo still builds and tests pass**
 
-Run: `pnpm nx run-many -t test-ci typecheck`
+Run: `pnpm nx run-many -t typecheck && pnpm nx run-many -t test -- --run`
 Expected: all projects PASS (the CLI/core still work; no OpenAI key needed for the existing paths).
 
 - [ ] **Step 5: Commit**
