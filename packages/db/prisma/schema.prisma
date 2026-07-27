@@ -37,3 +37,33 @@ model Product {
 
   @@map("products")
 }
+
+model Document {
+  id           Int             @id @default(autoincrement())
+  source_path  String          @unique
+  title        String
+  source_url   String?
+  category     String
+  content_hash String
+  char_count   Int
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime        @default(now()) @db.Timestamptz(6)
+  chunks       DocumentChunk[]
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id           Int                          @id @default(autoincrement())
+  document_id  Int
+  chunk_index  Int
+  content      String
+  heading_path String?
+  token_count  Int?
+  embedding    Unsupported("vector(1536)")?
+  created_at   DateTime                     @default(now()) @db.Timestamptz(6)
+  document     Document                     @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@unique([document_id, chunk_index])
+  @@map("document_chunks")
+}

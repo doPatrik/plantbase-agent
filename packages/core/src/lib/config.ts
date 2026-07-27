@@ -57,3 +57,81 @@ export function loadConfig(cwd: string = process.cwd()): AgentConfig {
     maxTokens: DEFAULT_MAX_TOKENS,
   };
 }
+
+/** Embedding-provider konfiguráció (OpenAI). Csak ott töltjük be, ahol embedding kell,
+ *  így a CLI OpenAI-kulcs nélkül is fut. */
+export interface EmbeddingConfig {
+  readonly apiKey: string;
+  readonly model: string;
+  readonly dimension: 1536;
+}
+
+const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
+const EMBEDDING_DIMENSION = 1536 as const;
+
+const embeddingEnvSchema = z.object({
+  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY hiányzik vagy üres.'),
+  OPENAI_EMBEDDING_MODEL: z.string().min(1).optional(),
+});
+
+/**
+ * Betölti (find-up .env) és validálja az embedding-konfigurációt.
+ * @throws {Error} ha az OPENAI_API_KEY hiányzik.
+ */
+export function loadEmbeddingConfig(
+  cwd: string = process.cwd(),
+): EmbeddingConfig {
+  loadDotenvFromNearest(cwd);
+  const result = embeddingEnvSchema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Hibás embedding-konfiguráció: ${issues}`);
+  }
+  return {
+    apiKey: result.data.OPENAI_API_KEY,
+    model: result.data.OPENAI_EMBEDDING_MODEL ?? DEFAULT_EMBEDDING_MODEL,
+    dimension: EMBEDDING_DIMENSION,
+  };
+}
+
+/** A RAG-pipeline futásidejű konfigurációja (agent-loop korlát, debug). */
+export interface RagConfig {
+  readonly maxAgentIterations: number;
+  readonly debug: boolean;
+}
+
+const DEFAULT_MAX_AGENT_ITERATIONS = 6;
+
+const ragEnvSchema = z.object({
+  MAX_AGENT_ITERATIONS: z.coerce
+    .number()
+    .int()
+    .positive('MAX_AGENT_ITERATIONS pozitív egész kell legyen.')
+    .optional(),
+  DEBUG: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+});
+
+/**
+ * Betölti (find-up .env) és validálja a RAG futásidejű konfigurációt.
+ * @throws {Error} ha valamelyik érték érvénytelen.
+ */
+export function loadRagConfig(cwd: string = process.cwd()): RagConfig {
+  loadDotenvFromNearest(cwd);
+  const result = ragEnvSchema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Hibás RAG-konfiguráció: ${issues}`);
+  }
+  return {
+    maxAgentIterations:
+      result.data.MAX_AGENT_ITERATIONS ?? DEFAULT_MAX_AGENT_ITERATIONS,
+    debug: result.data.DEBUG ?? false,
+  };
+}

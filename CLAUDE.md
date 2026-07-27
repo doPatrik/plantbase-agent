@@ -46,6 +46,9 @@ pnpm nx run-many -t test typecheck build
 - **Csak SELECT.** Kettős védelem: DB read-only role (elsődleges, NFR1) + kód-szintű `assertSelectOnly` guard.
 - Minden interakció a gyökér `logs/<timestamp>.jsonl`-be kerül (FR4). `--show-prompt` az átláthatósághoz (FR5).
 - Titkok kizárólag a gyökér `.env`-ben (gitignore). A kód `findUp`-pal találja meg a gyökeret/`.env`-et, így bárhonnan futtatható.
+- A **tudásbázis** (`documents` / `document_chunks`) sémáját/migrációját/seedjét a **Prisma** kezeli, de a **futásidejű vektorkeresés `pg`-vel** megy (mint a `runSql`): keresés/statisztika a **read-only** kapcsolaton, az embedding-írás (rag-builder) az RW-n. A pgvector kiterjesztést a migráció és a `docker/initdb` is engedélyezi.
+- Az **embedding** kizárólag OpenAI `text-embedding-3-small` (1536 dim), a Vercel AI SDK `embedMany`-n át (`packages/core/src/lib/embedding.ts`). Az embedding-kulcsot (`OPENAI_API_KEY`) csak az embedding-út igényli; a meglévő CLI e nélkül is fut.
+- A pgvector HNSW index egy `Unsupported("vector(1536)")` típusú oszlopon él; `prisma migrate dev` lehetséges follow-up migráció után az index DROP-olódhat — ezt el kell **utasítani**, helyette `prisma migrate deploy` használandó a meglévő migrációkhoz.
 
 ## Konvenciók
 
