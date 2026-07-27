@@ -6,3 +6,4 @@ export * from './lib/agent-tools.js';
 export * from './lib/logger.js';
 export * from './lib/ask-agent.js';
 export * from './lib/embedding.js';
+export * from './lib/knowledge-store.js';
