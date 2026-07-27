@@ -111,6 +111,7 @@ export async function replaceChunks(
 ): Promise<number> {
   await client.query(DELETE_CHUNKS_SQL, [documentId]);
   for (const chunk of chunks) {
+    assertEmbeddingDim(chunk.embedding);
     await client.query(INSERT_CHUNK_SQL, [
       documentId,
       chunk.chunk_index,
@@ -123,21 +124,23 @@ export async function replaceChunks(
   return chunks.length;
 }
 
-let sharedPool: pg.Pool | undefined;
+const pools = new Map<string, pg.Pool>();
 
 function getPool(connectionString: string): pg.Pool {
-  if (!sharedPool) {
-    sharedPool = new Pool({ connectionString });
+  let pool = pools.get(connectionString);
+  if (!pool) {
+    pool = new Pool({ connectionString });
+    pools.set(connectionString, pool);
   }
-  return sharedPool;
+  return pool;
 }
 
-/** A megosztott pool lezárása (teszt/CLI leállításkor). */
+/** Minden nyitott pool lezárása (teszt/CLI leállításkor). */
 export async function closeKnowledgePool(): Promise<void> {
-  if (sharedPool) {
-    await sharedPool.end();
-    sharedPool = undefined;
+  for (const pool of pools.values()) {
+    await pool.end();
   }
+  pools.clear();
 }
 
 function resolveConnectionString(explicit?: string): string {

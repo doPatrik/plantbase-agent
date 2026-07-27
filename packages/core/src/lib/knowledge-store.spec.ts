@@ -72,20 +72,25 @@ describe('upsertDocument', () => {
 describe('replaceChunks', () => {
   it('should delete old chunks then insert each new chunk with a vector param', async () => {
     const { client, calls } = fakeClient();
+    const embedding = Array.from({ length: 1536 }, (_, i) =>
+      i === 0 ? 0.1 : i === 1 ? 0.2 : 0,
+    );
     const count = await replaceChunks(client, 42, [
       {
         chunk_index: 0,
         content: 'hello',
         heading_path: 'H1',
         token_count: 2,
-        embedding: [0.1, 0.2],
+        embedding,
       },
     ]);
     expect(count).toBe(1);
     expect(calls[0].text).toMatch(/DELETE FROM document_chunks/);
     expect(calls[0].params).toEqual([42]);
     expect(calls[1].text).toMatch(/INSERT INTO document_chunks/);
-    expect(calls[1].params).toEqual([42, 0, 'hello', 'H1', 2, '[0.1,0.2]']);
+    expect(calls[1].params.slice(0, 5)).toEqual([42, 0, 'hello', 'H1', 2]);
+    expect(typeof calls[1].params[5]).toBe('string');
+    expect((calls[1].params[5] as string).startsWith('[0.1,0.2,')).toBe(true);
   });
 });
 
