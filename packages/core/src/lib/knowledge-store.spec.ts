@@ -107,12 +107,23 @@ describe('searchChunks', () => {
         similarity: 0.83,
       },
     ]);
-    const results = await searchChunks([0.1, 0.2], 5, { client });
+    const embedding = Array.from({ length: 1536 }, (_, i) =>
+      i === 0 ? 0.1 : i === 1 ? 0.2 : 0,
+    );
+    const results = await searchChunks(embedding, 5, { client });
     expect(results).toHaveLength(1);
     expect(results[0].similarity).toBe(0.83);
     expect(calls[0].text).toMatch(/1 - \(.*embedding.*<=>.*\)/);
     expect(calls[0].text).toMatch(/ORDER BY.*embedding.*<=>/);
-    expect(calls[0].params).toEqual(['[0.1,0.2]', 5]);
+    expect(calls[0].params).toEqual([toVectorLiteral(embedding), 5]);
+  });
+
+  it('should reject a wrong-dimension query embedding before querying', async () => {
+    const { client, calls } = fakeClient();
+    await expect(searchChunks([0.1, 0.2, 0.3], 5, { client })).rejects.toThrow(
+      /1536/,
+    );
+    expect(calls).toHaveLength(0);
   });
 });
 

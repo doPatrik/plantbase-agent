@@ -107,18 +107,18 @@ debug-statisztika miatt.
 
 **`document_chunks`** — egy sor / chunk:
 
-| oszlop         | típus                                             | megjegyzés                                             |
-| -------------- | ------------------------------------------------- | ------------------------------------------------------ |
-| `id`           | serial PK                                         |                                                        |
-| `document_id`  | int NOT NULL FK → documents(id) ON DELETE CASCADE |                                                        |
-| `chunk_index`  | int NOT NULL                                      |                                                        |
-| `content`      | text NOT NULL                                     |                                                        |
-| `heading_path` | text                                              | heading-breadcrumb (pl. `How To Care… > How To Repot`) |
-| `token_count`  | int                                               | közelítő                                               |
-| `embedding`    | **vector(1536) NOT NULL**                         |                                                        |
-| `created_at`   | timestamptz DEFAULT now()                         |                                                        |
-|                | UNIQUE(`document_id`, `chunk_index`)              |                                                        |
-|                | HNSW index (`embedding` `vector_cosine_ops`)      |                                                        |
+| oszlop         | típus                                             | megjegyzés                                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | serial PK                                         |                                                                                                                                                                                                                             |
+| `document_id`  | int NOT NULL FK → documents(id) ON DELETE CASCADE |                                                                                                                                                                                                                             |
+| `chunk_index`  | int NOT NULL                                      |                                                                                                                                                                                                                             |
+| `content`      | text NOT NULL                                     |                                                                                                                                                                                                                             |
+| `heading_path` | text                                              | heading-breadcrumb (pl. `How To Care… > How To Repot`)                                                                                                                                                                      |
+| `token_count`  | int                                               | közelítő                                                                                                                                                                                                                    |
+| `embedding`    | **vector(1536) NOT NULL**                         | implementálva NULLABLE (`Unsupported("vector(1536)")?`), hogy elkerüljük a Prisma migrációs drift-et; a dimenziót az app-szintű `assertEmbeddingDim` guard + az oszloptípus kényszeríti ki, az író út mindig ad embeddinget |
+| `created_at`   | timestamptz DEFAULT now()                         |                                                                                                                                                                                                                             |
+|                | UNIQUE(`document_id`, `chunk_index`)              |                                                                                                                                                                                                                             |
+|                | HNSW index (`embedding` `vector_cosine_ops`)      |                                                                                                                                                                                                                             |
 
 **Prisma modellezés:**
 

@@ -3,7 +3,7 @@
 // (teszthez determinisztikus fake), a meglévő DI-minta szerint (vö. runsql.ts).
 
 import { embedMany } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { loadEmbeddingConfig, type EmbeddingConfig } from './config.js';
 
 /** Alacsony szintű embedder: sztringek → vektorok, azonos sorrendben. */
@@ -20,8 +20,9 @@ export interface EmbedOptions {
 function defaultEmbedMany(config?: EmbeddingConfig): EmbedManyFn {
   return async (values) => {
     const cfg = config ?? loadEmbeddingConfig();
+    const provider = createOpenAI({ apiKey: cfg.apiKey });
     const { embeddings } = await embedMany({
-      model: openai.textEmbeddingModel(cfg.model),
+      model: provider.textEmbeddingModel(cfg.model),
       values: [...values],
     });
     return embeddings;

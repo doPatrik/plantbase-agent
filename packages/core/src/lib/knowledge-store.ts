@@ -221,6 +221,7 @@ export async function searchChunks(
   k: number,
   options: ReadOptions = {},
 ): Promise<SearchResult[]> {
+  assertEmbeddingDim(queryEmbedding);
   const client =
     options.client ??
     getPool(resolveReadConnectionString(options.connectionString));
