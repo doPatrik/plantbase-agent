@@ -41,6 +41,7 @@ function baseDeps(overrides: Partial<ChatDeps>): ChatDeps {
     }),
     catalogAgent: () => ({ textStream: gen('Katalógus') }),
     groundingThreshold: 0.35,
+    topK: 12,
     onTrace: (e) => events.push(e),
     // a teszt az events-re a záró expecteknél hivatkozik overrides-on át
     ...overrides,
@@ -124,5 +125,34 @@ describe('runChat', () => {
     expect(await collect(run.textStream)).toBe('Kombinált válasz');
     expect(answerInputCatalog).toContain('Kentia: 18900 Ft');
     expect((await run.result).route).toBe('both');
+  });
+
+  it('both route (not grounded): still calls answer with catalogContext + empty chunks, no canned message', async () => {
+    let answerCalled = false;
+    let answerInputChunks: unknown;
+    let answerInputCatalog: string | undefined;
+    const run = await runChat(
+      'Milyen pozsgást vegyek és hogyan gondozzam?',
+      baseDeps({
+        router: async () => ({ route: 'both', reasoning: 'r' }),
+        retrieve: async () => [chunk(0.1)], // alacsony similarity → not grounded
+        catalogAgent: () => ({ textStream: gen('Kentia: 18900 Ft') }),
+        answer: (input) => {
+          answerCalled = true;
+          answerInputChunks = input.chunks;
+          answerInputCatalog = input.catalogContext;
+          return { textStream: gen('Katalógus-alapú válasz'), sources: [] };
+        },
+      }),
+    );
+    const text = await collect(run.textStream);
+    expect(answerCalled).toBe(true);
+    expect(answerInputChunks).toEqual([]);
+    expect(answerInputCatalog).toContain('Kentia: 18900 Ft');
+    expect(text).toBe('Katalógus-alapú válasz');
+    expect(text).not.toMatch(/tudásbázis/i);
+    const answer = await run.result;
+    expect(answer.route).toBe('both');
+    expect(answer.sources).toEqual([]);
   });
 });

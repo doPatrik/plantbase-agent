@@ -23,7 +23,9 @@ const defaultStreamAnswer: AnswerStreamFn = ({ model, system, prompt }) => {
 const ANSWER_SYSTEM = `Te a Plantbase növény-asszisztens vagy. Válaszolj magyarul, tömören, KIZÁRÓLAG a megadott forrásrészletek (és ha van, a katalógus-adatok) alapján. Ha a részletek nem fedik le a kérdést, mondd ki őszintén — SOHA ne találj ki tényt, növényt, árat vagy adatot. A válasz végén sorold fel a felhasznált forrásokat (cím, és ha van, URL vagy fájlnév).`;
 
 /** SearchResult-okból forráshivatkozások, dokumentumonként egyszer (sorrendtartó). */
-export function toSourceRefs(chunks: readonly SearchResult[]): SourceRef[] {
+export function toSourceRefs(
+  chunks: readonly SearchResult[],
+): readonly SourceRef[] {
   const seen = new Set<number>();
   const refs: SourceRef[] = [];
   for (const c of chunks) {
@@ -58,7 +60,7 @@ export interface AnswerInput {
 
 export interface AnswerResult {
   readonly textStream: AsyncIterable<string>;
-  readonly sources: SourceRef[];
+  readonly sources: readonly SourceRef[];
 }
 
 export interface AnswerDeps {

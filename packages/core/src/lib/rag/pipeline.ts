@@ -34,6 +34,8 @@ export interface ChatDeps {
   readonly answer: Answer;
   readonly catalogAgent: CatalogAgent;
   readonly groundingThreshold: number;
+  /** A retrieve stage konfigurált top-K-ja (csak trace-hez, nem a lekéréshez). */
+  readonly topK: number;
   readonly onTrace?: OnTrace;
 }
 
@@ -84,7 +86,7 @@ export async function runChat(
   }
 
   // --- Knowledge-oldal (HyDE → retrieval → rerank → guardrail) ---
-  let sources: SourceRef[] = [];
+  let sources: readonly SourceRef[] = [];
   let answerStream: AsyncIterable<string> | undefined;
 
   if (needsKnowledge) {
@@ -98,7 +100,7 @@ export async function runChat(
     );
     onTrace({
       type: 'retrieval',
-      topK: retrieved.length,
+      topK: deps.topK,
       resultCount: retrieved.length,
       maxSimilarity: maxRetrieved,
     });
@@ -119,17 +121,21 @@ export async function runChat(
       threshold: deps.groundingThreshold,
     });
 
-    if (!grounding.grounded) {
-      // Nincs elég megbízható forrás → canned üzenet, NINCS answer-hívás.
+    if (!grounding.grounded && route === 'knowledge') {
+      // Tiszta knowledge-út, nincs elég megbízható forrás → canned üzenet,
+      // NINCS answer-hívás.
       const stream = tee(single(NO_GROUNDING_MESSAGE), onTrace, (full) =>
         resolveResult({ text: full, route, sources: [] }),
       );
       return { textStream: stream, result };
     }
 
+    // both + not-grounded: a knowledge-oldal nem szolgáltat forrást, de a
+    // catalogContext már megvan → grounded válasz adható a katalógus-adatokból
+    // (üres chunks-szal, hogy ne hivatkozzunk nem-megbízható forrásra).
     const answered = deps.answer({
       question,
-      chunks: reranked.chunks,
+      chunks: grounding.grounded ? reranked.chunks : [],
       catalogContext,
     });
     sources = answered.sources;
@@ -194,6 +200,7 @@ export function createDefaultChatDeps(
       maxIterations: ragConfig.maxAgentIterations,
     }),
     groundingThreshold: ragConfig.groundingThreshold,
+    topK: ragConfig.topK,
     ...overrides,
   };
 }

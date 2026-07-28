@@ -82,7 +82,7 @@ async function runInteractive(
     input: process.stdin,
     output: process.stdout,
   });
-  console.log(
+  console.error(
     'Plantbase — interaktív mód. Kérdezz; kilépés: "exit" vagy Ctrl+D.',
   );
   try {
