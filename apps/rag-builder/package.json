@@ -41,6 +41,16 @@
             }
           }
         }
+      },
+      "run": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "command": "node apps/rag-builder/dist/main.js",
+          "cwd": "{workspaceRoot}"
+        }
       }
     }
   },
