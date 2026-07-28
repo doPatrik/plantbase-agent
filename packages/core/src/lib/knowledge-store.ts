@@ -266,3 +266,20 @@ export async function getChunkStats(
     max_chunk_chars: Number(row.max_chunk_chars),
   };
 }
+
+const EXISTING_HASHES_SQL = `SELECT source_path, content_hash FROM documents`;
+
+/** Meglévő dokumentumok source_path → content_hash térképe (RO, idempotens rebuildhez). */
+export async function getExistingDocumentHashes(
+  options: ReadOptions = {},
+): Promise<Map<string, string>> {
+  const client =
+    options.client ??
+    getPool(resolveReadConnectionString(options.connectionString));
+  const { rows } = await client.query(EXISTING_HASHES_SQL, []);
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    map.set(String(row.source_path), String(row.content_hash));
+  }
+  return map;
+}

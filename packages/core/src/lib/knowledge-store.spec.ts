@@ -5,6 +5,7 @@ import {
   replaceChunks,
   searchChunks,
   getChunkStats,
+  getExistingDocumentHashes,
   type Queryable,
 } from './knowledge-store.js';
 
@@ -143,5 +144,31 @@ describe('getChunkStats', () => {
     expect(stats.document_count).toBe(2);
     expect(stats.chunk_count).toBe(10);
     expect(stats.avg_chunk_chars).toBeCloseTo(512.5);
+  });
+});
+
+describe('getExistingDocumentHashes', () => {
+  it('selects source_path + content_hash and builds a map', async () => {
+    const calls: { text: string; params?: readonly unknown[] }[] = [];
+    const client: Queryable = {
+      query: async (text, params) => {
+        calls.push({ text, params });
+        return {
+          rows: [
+            { source_path: 'a.md', content_hash: 'h1' },
+            { source_path: 'b.md', content_hash: 'h2' },
+          ],
+        };
+      },
+    };
+
+    const map = await getExistingDocumentHashes({ client });
+
+    expect(calls[0].text).toMatch(
+      /select\s+source_path,\s*content_hash\s+from\s+documents/i,
+    );
+    expect(map.get('a.md')).toBe('h1');
+    expect(map.get('b.md')).toBe('h2');
+    expect(map.size).toBe(2);
   });
 });
