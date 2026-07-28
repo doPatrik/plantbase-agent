@@ -1,4 +1,4 @@
-import { embedTexts, embedQuery } from './embedding.js';
+import { embedTexts, embedQuery, embedTextsWithUsage } from './embedding.js';
 
 describe('embedTexts', () => {
   it('should return an empty array without calling the model for empty input', async () => {
@@ -35,5 +35,33 @@ describe('embedQuery', () => {
       embedMany: async (values) => values.map(() => [9, 8, 7]),
     });
     expect(result).toEqual([9, 8, 7]);
+  });
+});
+
+describe('embedTextsWithUsage', () => {
+  it('should return empty embeddings and zero tokens for empty input without calling the model', async () => {
+    let called = false;
+    const result = await embedTextsWithUsage([], {
+      embedMany: async (values) => {
+        called = true;
+        return { embeddings: values.map(() => [0]), totalTokens: 1 };
+      },
+    });
+    expect(result).toEqual({ embeddings: [], totalTokens: 0 });
+    expect(called).toBe(false);
+  });
+
+  it('should return the vectors and reported token usage from the injected embedder', async () => {
+    const result = await embedTextsWithUsage(['a', 'b'], {
+      embedMany: async (values) => ({
+        embeddings: values.map((_, i) => [i, i + 1]),
+        totalTokens: 7,
+      }),
+    });
+    expect(result.embeddings).toEqual([
+      [0, 1],
+      [1, 2],
+    ]);
+    expect(result.totalTokens).toBe(7);
   });
 });
