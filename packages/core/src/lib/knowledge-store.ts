@@ -41,6 +41,7 @@ export interface SearchResult {
   readonly heading_path: string | null;
   readonly title: string;
   readonly source_url: string | null;
+  readonly source_path: string;
   readonly similarity: number;
 }
 
@@ -202,6 +203,7 @@ const SEARCH_SQL = `SELECT
   dc.heading_path,
   d.title,
   d.source_url,
+  d.source_path,
   1 - (dc.embedding <=> $1::vector) AS similarity
 FROM document_chunks dc
 JOIN documents d ON d.id = dc.document_id
@@ -236,6 +238,7 @@ export async function searchChunks(
     heading_path: row.heading_path === null ? null : String(row.heading_path),
     title: String(row.title),
     source_url: row.source_url === null ? null : String(row.source_url),
+    source_path: String(row.source_path),
     similarity: Number(row.similarity),
   }));
 }

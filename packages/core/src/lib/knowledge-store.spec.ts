@@ -126,6 +126,34 @@ describe('searchChunks', () => {
     );
     expect(calls).toHaveLength(0);
   });
+
+  it('selects and maps source_path', async () => {
+    let capturedSql = '';
+    const client: Queryable = {
+      query: async (text) => {
+        capturedSql = text;
+        return {
+          rows: [
+            {
+              chunk_id: 1,
+              document_id: 2,
+              content: 'szöveg',
+              heading_path: 'Öntözés',
+              title: 'Pozsgások',
+              source_url: null,
+              source_path: 'seed/knowledge/pozsgas.md',
+              similarity: 0.62,
+            },
+          ],
+        };
+      },
+    };
+    const embedding = new Array(1536).fill(0.01);
+    const [result] = await searchChunks(embedding, 5, { client });
+    expect(capturedSql).toContain('d.source_path');
+    expect(result.source_path).toBe('seed/knowledge/pozsgas.md');
+    expect(result.similarity).toBeCloseTo(0.62);
+  });
 });
 
 describe('getChunkStats', () => {

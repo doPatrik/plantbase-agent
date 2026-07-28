@@ -1,5 +1,5 @@
 {
-  "name": "@plantbase/core",
+  "name": "@plantbase/shared",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -16,17 +16,11 @@
     }
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.23",
-    "@ai-sdk/openai": "^4.0.20",
-    "@anthropic-ai/sdk": "^0.70.1",
-    "@plantbase/shared": "workspace:*",
-    "ai": "^7.0.37",
-    "dotenv": "^17.4.2",
-    "pg": "^8.22.0",
     "tslib": "^2.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@vitest/coverage-v8": "~4.1.9",
+    "vitest": "~4.1.9"
   }
 }

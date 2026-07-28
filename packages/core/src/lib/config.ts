@@ -107,13 +107,30 @@ export function loadEmbeddingConfig(
   };
 }
 
-/** A RAG-pipeline futásidejű konfigurációja (agent-loop korlát, debug). */
+/** A RAG-pipeline futásidejű konfigurációja (SP3a). */
 export interface RagConfig {
   readonly maxAgentIterations: number;
   readonly debug: boolean;
+  /** Router / HyDE / rerank modell (olcsó, alapból Haiku). */
+  readonly routerModel: string;
+  readonly hydeModel: string;
+  readonly rerankModel: string;
+  /** Answer + katalógus-agent modell (alapból Sonnet). */
+  readonly answerModel: string;
+  /** A vektorkeresés által visszaadott chunkok száma. */
+  readonly topK: number;
+  /** A rerank után megtartott chunkok száma. */
+  readonly rerankTopN: number;
+  /** Grounding-küszöb: e cosine-similarity alatt "nincs találat". */
+  readonly groundingThreshold: number;
 }
 
 const DEFAULT_MAX_AGENT_ITERATIONS = 6;
+const DEFAULT_CHEAP_MODEL = 'claude-haiku-4-5';
+const DEFAULT_ANSWER_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_TOP_K = 12;
+const DEFAULT_RERANK_TOP_N = 5;
+const DEFAULT_GROUNDING_THRESHOLD = 0.35;
 
 const ragEnvSchema = z.object({
   MAX_AGENT_ITERATIONS: z.coerce
@@ -125,6 +142,25 @@ const ragEnvSchema = z.object({
     .enum(['true', 'false', '1', '0'])
     .optional()
     .transform((v) => v === 'true' || v === '1'),
+  RAG_ROUTER_MODEL: z.string().min(1).optional(),
+  RAG_HYDE_MODEL: z.string().min(1).optional(),
+  RAG_RERANK_MODEL: z.string().min(1).optional(),
+  RAG_ANSWER_MODEL: z.string().min(1).optional(),
+  RAG_TOP_K: z.coerce
+    .number()
+    .int()
+    .positive('RAG_TOP_K pozitív egész kell legyen.')
+    .optional(),
+  RAG_RERANK_TOP_N: z.coerce
+    .number()
+    .int()
+    .positive('RAG_RERANK_TOP_N pozitív egész kell legyen.')
+    .optional(),
+  RAG_GROUNDING_THRESHOLD: z.coerce
+    .number()
+    .min(0, 'RAG_GROUNDING_THRESHOLD nem lehet negatív.')
+    .max(1, 'RAG_GROUNDING_THRESHOLD legfeljebb 1 lehet.')
+    .optional(),
 });
 
 /**
@@ -144,5 +180,13 @@ export function loadRagConfig(cwd: string = process.cwd()): RagConfig {
     maxAgentIterations:
       result.data.MAX_AGENT_ITERATIONS ?? DEFAULT_MAX_AGENT_ITERATIONS,
     debug: result.data.DEBUG ?? false,
+    routerModel: result.data.RAG_ROUTER_MODEL ?? DEFAULT_CHEAP_MODEL,
+    hydeModel: result.data.RAG_HYDE_MODEL ?? DEFAULT_CHEAP_MODEL,
+    rerankModel: result.data.RAG_RERANK_MODEL ?? DEFAULT_CHEAP_MODEL,
+    answerModel: result.data.RAG_ANSWER_MODEL ?? DEFAULT_ANSWER_MODEL,
+    topK: result.data.RAG_TOP_K ?? DEFAULT_TOP_K,
+    rerankTopN: result.data.RAG_RERANK_TOP_N ?? DEFAULT_RERANK_TOP_N,
+    groundingThreshold:
+      result.data.RAG_GROUNDING_THRESHOLD ?? DEFAULT_GROUNDING_THRESHOLD,
   };
 }
