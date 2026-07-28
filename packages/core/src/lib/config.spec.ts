@@ -96,3 +96,56 @@ describe('loadRagConfig', () => {
     expect(() => loadRagConfig('/')).toThrow(/MAX_AGENT_ITERATIONS/);
   });
 });
+
+describe('loadRagConfig (SP3a extensions)', () => {
+  const KEYS = [
+    'RAG_ROUTER_MODEL',
+    'RAG_HYDE_MODEL',
+    'RAG_RERANK_MODEL',
+    'RAG_ANSWER_MODEL',
+    'RAG_TOP_K',
+    'RAG_RERANK_TOP_N',
+    'RAG_GROUNDING_THRESHOLD',
+  ];
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const k of KEYS) {
+      saved[k] = process.env[k];
+      delete process.env[k];
+    }
+  });
+  afterEach(() => {
+    for (const k of KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  it('applies documented defaults when unset', () => {
+    const cfg = loadRagConfig('/nonexistent-dir-for-test');
+    expect(cfg.routerModel).toBe('claude-haiku-4-5');
+    expect(cfg.hydeModel).toBe('claude-haiku-4-5');
+    expect(cfg.rerankModel).toBe('claude-haiku-4-5');
+    expect(cfg.answerModel).toBe('claude-sonnet-4-6');
+    expect(cfg.topK).toBe(12);
+    expect(cfg.rerankTopN).toBe(5);
+    expect(cfg.groundingThreshold).toBeCloseTo(0.35);
+  });
+
+  it('reads overrides from env', () => {
+    process.env.RAG_TOP_K = '20';
+    process.env.RAG_GROUNDING_THRESHOLD = '0.4';
+    process.env.RAG_ANSWER_MODEL = 'claude-sonnet-5';
+    const cfg = loadRagConfig('/nonexistent-dir-for-test');
+    expect(cfg.topK).toBe(20);
+    expect(cfg.groundingThreshold).toBeCloseTo(0.4);
+    expect(cfg.answerModel).toBe('claude-sonnet-5');
+  });
+
+  it('rejects a negative grounding threshold', () => {
+    process.env.RAG_GROUNDING_THRESHOLD = '-0.1';
+    expect(() => loadRagConfig('/nonexistent-dir-for-test')).toThrow(
+      /RAG-konfiguráció/,
+    );
+  });
+});

@@ -16,8 +16,10 @@
     }
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.23",
     "@ai-sdk/openai": "^4.0.20",
     "@anthropic-ai/sdk": "^0.70.1",
+    "@plantbase/shared": "workspace:*",
     "ai": "^7.0.37",
     "dotenv": "^17.4.2",
     "pg": "^8.22.0",
