@@ -1,0 +1,18 @@
+import { createHyde, type GenerateTextFn } from './hyde.js';
+import type { LanguageModel } from 'ai';
+
+const model = { modelId: 'fake' } as unknown as LanguageModel;
+
+describe('createHyde', () => {
+  it('returns a hypothetical answer document for the question', async () => {
+    let capturedPrompt = '';
+    const generateText: GenerateTextFn = async ({ prompt }) => {
+      capturedPrompt = prompt;
+      return { text: 'A pozsgásokat ritkán, alaposan kell öntözni.' };
+    };
+    const hyde = createHyde({ model, generateText });
+    const doc = await hyde('Hogyan öntözzem a pozsgást?');
+    expect(doc).toContain('öntözni');
+    expect(capturedPrompt).toContain('Hogyan öntözzem a pozsgást?');
+  });
+});
