@@ -82,9 +82,15 @@ App implementálva a `feat/rag-builder` ágon: markdown-heading-tudatos chunkol�
 
 Külön `apps/rag-builder` Nx app: `seed/knowledge` beolvasás → **chunkolás** (markdown-heading-tudatos, overlappal — stratégia a spec-ben rögzítendő) → embedding (OpenAI, a `core` `embedTexts`-cel) → `document_chunks` feltöltés (idempotens, `content_hash` alapján, a `core` `upsertDocumentWithChunks`-cal). **Előfeltétel:** valódi `OPENAI_API_KEY` a gyökér `.env`-ben (jelenleg csak `.env.example`-ben placeholder).
 
-### SP3 — backend (Express + Vercel AI SDK multi-agent) — ⏳ TERVEZETT
+### SP3 — Multi-agent RAG pipeline (Vercel AI SDK)
 
-Orchestrator agent-loop (`stopWhen: stepCountIs(MAX_AGENT_ITERATIONS)`) + agentek toolként (HyDE, Retrieval, Rerank, Answer, Guardrail) + `catalogSql` (a meglévő `runSql` migrálva) + `knowledgeSearch`. `POST /api/chat` streaming, debug endpointok, DEBUG engine-trace a data-stream mellékcsatornáján. A meglévő `ask-agent.ts` Vercel AI SDK-ra migrálása itt történik. `shared` package bevezetése.
+#### SP3a — motor + CLI — ✅ KÉSZ (2026-07-28)
+
+Merged: PR #23. Tartalom: Vercel AI SDK-alapú hibrid multi-agent rendszer (`packages/core/src/lib/rag/` modul: models, router, hyde, retrieval, rerank, guardrail, answer, tools, catalog-agent, pipeline), streaming CLI + debug trace (`DEBUG=true` a stderr-re), `packages/shared` (engine-trace + chat DTO-k), guardrail küszöb `RAG_GROUNDING_THRESHOLD=0.35`. A régi kézzel írt tool-use loop (`ask-agent.ts`/`agent-tools.ts`) SP3a-ban törölve. Hiteles spec: `docs/superpowers/specs/2026-07-28-sp3a-rag-pipeline-design.md`, terv: `docs/superpowers/plans/2026-07-28-sp3a-rag-pipeline.md`.
+
+#### SP3b — backend (Express HTTP) — ⏳ KÖVETKEZŐ
+
+Orchestrator agent-loop (`stopWhen: stepCountIs(MAX_AGENT_ITERATIONS)`) web-endpointként. `POST /api/chat` streaming, debug endpointok, DEBUG engine-trace a data-stream mellékcsatornáján.
 
 ### SP4 — frontend (React + shadcn/ui) — ⏳ TERVEZETT
 

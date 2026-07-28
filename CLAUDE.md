@@ -42,6 +42,12 @@ pnpm nx run rag-builder:run -- stats             # tudásbázis-állapot (RO)
 # gyors dev-loop tsx-szel (build nélkül):
 pnpm --filter @plantbase/rag-builder exec tsx src/main.ts build --dry-run
 
+# CLI (SP3a: RAG-pipeline, streaming). DEBUG=true → engine-trace a stderr-en:
+DEBUG=true pnpm plantbase ask "Hogyan gondozzam a pozsgásokat?" # tudás-út (RAG)
+pnpm plantbase ask "Mennyibe kerül a legolcsóbb pozsgás?" # katalógus-út (SQL)
+
+# RAG env-kulcsok (modellek, topK, küszöb): lásd .env.example
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build
@@ -49,7 +55,7 @@ pnpm nx run-many -t test typecheck build
 
 ## Architekturális invariánsok (NE sértsd meg)
 
-- Az agent **kézzel írt** tool-use loopot használ (`client.messages.create` + `stop_reason: 'tool_use'`), **nem** SDK-helpert (`toolRunner`) és nem agent-frameworköt.
+- Az agent a **Vercel AI SDK-alapú, hibrid multi-agent RAG-pipeline**-t használ (`packages/core/src/lib/rag/`): felül LLM-router (`generateObject`), a knowledge-út determinisztikus kód-pipeline (HyDE → retrieval → rerank → guardrail → answer), a katalógus-út `streamText` + `stopWhen: stepCountIs`. **Nem** agent-framework és **nem** a régi kézzel írt Anthropic tool-loop (az `ask-agent.ts`/`agent-tools.ts` az SP3a-ban törölve). A modellek `@ai-sdk/anthropic`-on át (Haiku router/HyDE/rerank, Sonnet answer/katalógus).
 - A `runSql` **`pg`-vel** fut a **read-only** kapcsolaton (`DATABASE_URL_READONLY`), **nem** Prisma-n át. Prisma csak séma/migráció/seed a RW `DATABASE_URL`-en.
 - **Csak SELECT.** Kettős védelem: DB read-only role (elsődleges, NFR1) + kód-szintű `assertSelectOnly` guard.
 - Minden interakció a gyökér `logs/<timestamp>.jsonl`-be kerül (FR4). `--show-prompt` az átláthatósághoz (FR5).
