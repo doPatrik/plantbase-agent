@@ -28,7 +28,11 @@ function makeDeps(
     readFile: (p) => files[p],
     embedTexts: async (values) => {
       embedCalls++;
-      return values.map(() => vec());
+      // determinisztikus: 5 token / chunk, a token-elszámolás teszteléséhez
+      return {
+        embeddings: values.map(() => vec()),
+        totalTokens: values.length * 5,
+      };
     },
     getExistingHashes: async () => {
       hashCalls++;
@@ -87,6 +91,28 @@ describe('runBuild', () => {
     expect(r.embedCalls()).toBe(0);
     expect(r.upserts).toEqual([]);
     expect(r.hashCalls()).toBe(0); // dry-run: nem kérdezi le a meglévő hasheket
+    expect(summary.embeddedTokens).toBe(0);
+    expect(summary.estimatedCostUsd).toBe(0);
+    expect(r.logs.some((line) => /EMBEDDING:/.test(line))).toBe(false);
+  });
+
+  it('accumulates embedded tokens and estimates cost from the price', async () => {
+    const r = makeDeps({ 'a.md': RAW_A, 'b.md': RAW_B });
+    // 2 dokumentum × 1 chunk × 5 token = 10 token
+    const summary = await runBuild(r.deps, {
+      dir: '/x',
+      pricePerMillionTokens: 1000,
+    });
+    expect(summary.embeddedTokens).toBe(10);
+    expect(summary.estimatedCostUsd).toBeCloseTo((10 / 1_000_000) * 1000, 10); // 0.01
+    expect(r.logs.some((line) => /EMBEDDING: 10 tokens/.test(line))).toBe(true);
+  });
+
+  it('defaults the price to 0.02 per million tokens when not given', async () => {
+    const r = makeDeps({ 'a.md': RAW_A });
+    const summary = await runBuild(r.deps, { dir: '/x' });
+    expect(summary.embeddedTokens).toBe(5);
+    expect(summary.estimatedCostUsd).toBeCloseTo((5 / 1_000_000) * 0.02, 12);
   });
 
   it('warns and skips a 0-chunk document (not counted as built/skipped/error)', async () => {

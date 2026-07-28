@@ -51,6 +51,18 @@ describe('loadEmbeddingConfig', () => {
     expect(loadEmbeddingConfig('/').model).toBe('text-embedding-3-large');
   });
 
+  it('should default the embedding price to 0.02 per million tokens', () => {
+    process.env.OPENAI_API_KEY = 'sk-openai-123';
+    delete process.env.OPENAI_EMBEDDING_PRICE_PER_M;
+    expect(loadEmbeddingConfig('/').pricePerMillionTokens).toBe(0.02);
+  });
+
+  it('should honor a custom OPENAI_EMBEDDING_PRICE_PER_M', () => {
+    process.env.OPENAI_API_KEY = 'sk-openai-123';
+    process.env.OPENAI_EMBEDDING_PRICE_PER_M = '0.05';
+    expect(loadEmbeddingConfig('/').pricePerMillionTokens).toBe(0.05);
+  });
+
   it('should throw when OPENAI_API_KEY is missing', () => {
     delete process.env.OPENAI_API_KEY;
     expect(() => loadEmbeddingConfig('/')).toThrow(/OPENAI_API_KEY/);

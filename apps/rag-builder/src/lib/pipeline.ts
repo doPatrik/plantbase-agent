@@ -15,7 +15,9 @@ import { chunkMarkdown, type ChunkOptions } from './chunker.js';
 export interface BuildDeps {
   readonly listFiles: (dir: string) => string[];
   readonly readFile: (path: string) => string;
-  readonly embedTexts: (values: readonly string[]) => Promise<number[][]>;
+  readonly embedTexts: (
+    values: readonly string[],
+  ) => Promise<{ embeddings: number[][]; totalTokens: number }>;
   readonly getExistingHashes: () => Promise<Map<string, string>>;
   readonly upsert: (
     doc: DocumentInput,
@@ -30,6 +32,10 @@ export interface BuildOptions {
   readonly dryRun?: boolean;
   readonly chunkOptions?: ChunkOptions;
   readonly dimension?: number;
+  /** Ár (USD) 1M input-tokenre az embedding-költség becsléséhez (default 0.02). */
+  readonly pricePerMillionTokens?: number;
+  /** Embedding-modell neve — csak az EMBEDDING log-sorhoz. */
+  readonly embeddingModel?: string;
 }
 
 export interface BuildSummary {
@@ -37,9 +43,14 @@ export interface BuildSummary {
   readonly skipped: number;
   readonly chunks: number;
   readonly errors: number;
+  /** Az embeddinghez felhasznált összes input-token (usage alapján). */
+  readonly embeddedTokens: number;
+  /** Becsült embedding-költség USD-ben (embeddedTokens × ár). */
+  readonly estimatedCostUsd: number;
 }
 
 const DEFAULT_DIMENSION = 1536;
+const DEFAULT_PRICE_PER_M = 0.02;
 
 export async function runBuild(
   deps: BuildDeps,
@@ -56,6 +67,7 @@ export async function runBuild(
   let skipped = 0;
   let chunks = 0;
   let errors = 0;
+  let embeddedTokens = 0;
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -85,7 +97,10 @@ export async function runBuild(
         continue;
       }
 
-      const embeddings = await deps.embedTexts(docChunks.map((c) => c.content));
+      const { embeddings, totalTokens } = await deps.embedTexts(
+        docChunks.map((c) => c.content),
+      );
+      embeddedTokens += totalTokens;
       const chunkInputs: ChunkInput[] = docChunks.map((c, idx) => {
         assertEmbeddingDim(embeddings[idx], dimension);
         return {
@@ -116,8 +131,19 @@ export async function runBuild(
     }
   }
 
+  const pricePerM = options.pricePerMillionTokens ?? DEFAULT_PRICE_PER_M;
+  const estimatedCostUsd = (embeddedTokens / 1_000_000) * pricePerM;
+
   deps.log(
     `DONE: ${built} built, ${skipped} skipped, ${chunks} chunks, ${errors} errors`,
   );
-  return { built, skipped, chunks, errors };
+  if (embeddedTokens > 0) {
+    const modelSuffix = options.embeddingModel
+      ? ` (${options.embeddingModel})`
+      : '';
+    deps.log(
+      `EMBEDDING: ${embeddedTokens} tokens ≈ $${estimatedCostUsd.toFixed(4)}${modelSuffix}`,
+    );
+  }
+  return { built, skipped, chunks, errors, embeddedTokens, estimatedCostUsd };
 }

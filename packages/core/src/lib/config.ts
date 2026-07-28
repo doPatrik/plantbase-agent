@@ -64,14 +64,23 @@ export interface EmbeddingConfig {
   readonly apiKey: string;
   readonly model: string;
   readonly dimension: 1536;
+  /** Ár (USD) 1M input-tokenre — az embedding-költség becsléséhez. */
+  readonly pricePerMillionTokens: number;
 }
 
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSION = 1536 as const;
+// text-embedding-3-small listaár (USD / 1M input-token); env-ből felülírható,
+// mert az árazás idővel változhat.
+const DEFAULT_EMBEDDING_PRICE_PER_M = 0.02;
 
 const embeddingEnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY hiányzik vagy üres.'),
   OPENAI_EMBEDDING_MODEL: z.string().min(1).optional(),
+  OPENAI_EMBEDDING_PRICE_PER_M: z.coerce
+    .number()
+    .nonnegative('OPENAI_EMBEDDING_PRICE_PER_M nem lehet negatív.')
+    .optional(),
 });
 
 /**
@@ -93,6 +102,8 @@ export function loadEmbeddingConfig(
     apiKey: result.data.OPENAI_API_KEY,
     model: result.data.OPENAI_EMBEDDING_MODEL ?? DEFAULT_EMBEDDING_MODEL,
     dimension: EMBEDDING_DIMENSION,
+    pricePerMillionTokens:
+      result.data.OPENAI_EMBEDDING_PRICE_PER_M ?? DEFAULT_EMBEDDING_PRICE_PER_M,
   };
 }
 
