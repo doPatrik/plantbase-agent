@@ -20,6 +20,8 @@
           "bundle": false,
           "main": "apps/rag-builder/src/main.ts",
           "tsConfig": "apps/rag-builder/tsconfig.app.json",
+          "declaration": false,
+          "skipTypeCheck": true,
           "assets": [
             "apps/rag-builder/src/assets"
           ],
