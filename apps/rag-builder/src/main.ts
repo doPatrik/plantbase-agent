@@ -11,7 +11,7 @@ import { Command } from 'commander';
 import {
   resolveProjectRoot,
   loadEmbeddingConfig,
-  embedTexts,
+  embedTextsWithUsage,
   getExistingDocumentHashes,
   upsertDocumentWithChunks,
   getChunkStats,
@@ -61,7 +61,7 @@ program
     const deps: BuildDeps = {
       listFiles: listMarkdown,
       readFile: (p) => readFileSync(p, 'utf8'),
-      embedTexts: (values) => embedTexts(values, { config }),
+      embedTexts: (values) => embedTextsWithUsage(values, { config }),
       getExistingHashes: () => getExistingDocumentHashes(),
       upsert: (doc, chunks) => upsertDocumentWithChunks(doc, chunks),
       log: (line) => process.stdout.write(`${line}\n`),
@@ -72,6 +72,8 @@ program
         dir,
         force: opts.force,
         dryRun: opts.dryRun,
+        pricePerMillionTokens: config?.pricePerMillionTokens,
+        embeddingModel: config?.model,
       });
       process.exitCode = summary.errors > 0 ? 1 : 0;
     } finally {
