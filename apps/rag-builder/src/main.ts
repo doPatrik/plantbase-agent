@@ -16,8 +16,10 @@ import {
   upsertDocumentWithChunks,
   getChunkStats,
   closeKnowledgePool,
+  createJsonlLogger,
 } from '@plantbase/core';
 import { runBuild, type BuildDeps } from './lib/pipeline.js';
+import { buildRunRecord } from './lib/run-log.js';
 
 function defaultSeedDir(): string {
   return join(resolveProjectRoot(), 'seed', 'knowledge');
@@ -75,6 +77,22 @@ program
         pricePerMillionTokens: config?.pricePerMillionTokens,
         embeddingModel: config?.model,
       });
+      // Valós (nem dry-run) futásról run-log sort írunk a költség/token
+      // történethez; a dry-run csak előnézet, azt nem naplózzuk.
+      if (!opts.dryRun) {
+        const logger = createJsonlLogger({
+          dir: join(resolveProjectRoot(), 'logs', 'rag-builder'),
+        });
+        logger.event({
+          ...buildRunRecord(summary, {
+            ts: new Date().toISOString(),
+            force: opts.force ?? false,
+            model: config?.model ?? null,
+            pricePerMillionTokens: config?.pricePerMillionTokens ?? null,
+          }),
+        });
+        process.stdout.write(`LOG: ${logger.filePath}\n`);
+      }
       process.exitCode = summary.errors > 0 ? 1 : 0;
     } finally {
       await closeKnowledgePool();
