@@ -76,7 +76,9 @@ Minden al-projekt saját ciklust kap: **brainstorming → spec (`docs/superpower
 
 Merged: PR #17 (`main`, 2026-07-27). Tartalom: pgvector infra, `documents`/`document_chunks` séma + HNSW cosine index, kompozálható config (`loadEmbeddingConfig`/`loadRagConfig`), `embedding.ts` (Vercel AI SDK + OpenAI), `knowledge-store.ts` (`pg` upsert/search/stats).
 
-### SP2 — rag-builder — ⏳ KÖVETKEZŐ
+### SP2 — rag-builder — ✅ KÉSZ
+
+App implementálva a `feat/rag-builder` ágon: markdown-heading-tudatos chunkolás + OpenAI embedding + idempotens pgvector upsert, `--dry-run`/`--force`/`stats` parancsokkal. A `--dry-run` futása a valós 202-fájlos seed-en 448 chunk generálása és 0 hiba mutatott. A valódi embedding + pgvector feltöltés az `OPENAI_API_KEY` jelenlétét igényli a gyökér `.env`-ben.
 
 Külön `apps/rag-builder` Nx app: `seed/knowledge` beolvasás → **chunkolás** (markdown-heading-tudatos, overlappal — stratégia a spec-ben rögzítendő) → embedding (OpenAI, a `core` `embedTexts`-cel) → `document_chunks` feltöltés (idempotens, `content_hash` alapján, a `core` `upsertDocumentWithChunks`-cal). **Előfeltétel:** valódi `OPENAI_API_KEY` a gyökér `.env`-ben (jelenleg csak `.env.example`-ben placeholder).
 

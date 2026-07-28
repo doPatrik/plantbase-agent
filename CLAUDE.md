@@ -34,6 +34,11 @@ pnpm plantbase:build                        # nx build cli → apps/cli/dist/mai
 pnpm plantbase ask "Milyen kategóriák vannak?"
 pnpm plantbase                              # interaktív
 
+# RAG builder (seed/knowledge → chunk → embedding → pgvector; OPENAI_API_KEY kell a valós futáshoz):
+pnpm --filter @plantbase/rag-builder exec tsx src/main.ts build --dry-run # chunkolás kulcs nélkül
+pnpm --filter @plantbase/rag-builder exec tsx src/main.ts build # valós embedding + feltöltés
+pnpm --filter @plantbase/rag-builder exec tsx src/main.ts stats # tudásbázis-állapot (RO)
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build
