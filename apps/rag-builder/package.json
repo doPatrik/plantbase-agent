@@ -1,0 +1,56 @@
+{
+  "name": "@plantbase/rag-builder",
+  "version": "1.0.0",
+  "private": true,
+  "nx": {
+    "name": "rag-builder",
+    "targets": {
+      "build": {
+        "executor": "@nx/esbuild:esbuild",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "defaultConfiguration": "production",
+        "options": {
+          "platform": "node",
+          "outputPath": "apps/rag-builder/dist",
+          "format": [
+            "cjs"
+          ],
+          "bundle": false,
+          "main": "apps/rag-builder/src/main.ts",
+          "tsConfig": "apps/rag-builder/tsconfig.app.json",
+          "assets": [
+            "apps/rag-builder/src/assets"
+          ],
+          "esbuildOptions": {
+            "sourcemap": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        },
+        "configurations": {
+          "development": {},
+          "production": {
+            "esbuildOptions": {
+              "sourcemap": false,
+              "outExtension": {
+                ".js": ".js"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@plantbase/core": "workspace:*",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "~4.1.9",
+    "tsx": "^4.22.4",
+    "vitest": "~4.1.9"
+  }
+}
