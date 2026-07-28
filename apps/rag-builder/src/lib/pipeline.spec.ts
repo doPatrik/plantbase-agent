@@ -10,7 +10,9 @@ const vec = () => Array.from({ length: 1536 }, () => 0.1);
 interface Recorder {
   deps: BuildDeps;
   upserts: string[];
+  logs: string[];
   embedCalls: () => number;
+  hashCalls: () => number;
 }
 
 function makeDeps(
@@ -18,7 +20,9 @@ function makeDeps(
   existing: Map<string, string> = new Map(),
 ): Recorder {
   const upserts: string[] = [];
+  const logs: string[] = [];
   let embedCalls = 0;
+  let hashCalls = 0;
   const deps: BuildDeps = {
     listFiles: () => Object.keys(files).sort(),
     readFile: (p) => files[p],
@@ -26,14 +30,23 @@ function makeDeps(
       embedCalls++;
       return values.map(() => vec());
     },
-    getExistingHashes: async () => existing,
+    getExistingHashes: async () => {
+      hashCalls++;
+      return existing;
+    },
     upsert: async (doc, chunks) => {
       upserts.push(doc.source_path);
       return { documentId: upserts.length, chunkCount: chunks.length };
     },
-    log: () => undefined,
+    log: (line) => logs.push(line),
   };
-  return { deps, upserts, embedCalls: () => embedCalls };
+  return {
+    deps,
+    upserts,
+    logs,
+    embedCalls: () => embedCalls,
+    hashCalls: () => hashCalls,
+  };
 }
 
 describe('runBuild', () => {
@@ -44,6 +57,7 @@ describe('runBuild', () => {
     expect(summary.skipped).toBe(0);
     expect(summary.errors).toBe(0);
     expect(r.upserts).toEqual(['a.md', 'b.md']);
+    expect(r.hashCalls()).toBe(1); // normál build: pontosan egyszer kérdez rá
   });
 
   it('skips documents whose content_hash is unchanged (no embedding)', async () => {
@@ -62,6 +76,7 @@ describe('runBuild', () => {
     const summary = await runBuild(r.deps, { dir: '/x', force: true });
     expect(summary.skipped).toBe(0);
     expect(summary.built).toBe(1);
+    expect(r.hashCalls()).toBe(0); // force: nem kérdezi le a meglévő hasheket
   });
 
   it('--dry-run chunks but never embeds or upserts', async () => {
@@ -71,6 +86,19 @@ describe('runBuild', () => {
     expect(summary.built).toBe(0);
     expect(r.embedCalls()).toBe(0);
     expect(r.upserts).toEqual([]);
+    expect(r.hashCalls()).toBe(0); // dry-run: nem kérdezi le a meglévő hasheket
+  });
+
+  it('warns and skips a 0-chunk document (not counted as built/skipped/error)', async () => {
+    const RAW_EMPTY = `---\ntitle: Empty\ncategory: plants-101\n---\n   `;
+    const r = makeDeps({ 'empty.md': RAW_EMPTY });
+    const summary = await runBuild(r.deps, { dir: '/x' });
+    expect(summary.errors).toBe(0);
+    expect(summary.built).toBe(0);
+    expect(summary.chunks).toBe(0);
+    expect(r.embedCalls()).toBe(0);
+    expect(r.upserts).toEqual([]);
+    expect(r.logs.some((line) => /WARN|0 chunk/i.test(line))).toBe(true);
   });
 
   it('isolates a per-file error and keeps going', async () => {
