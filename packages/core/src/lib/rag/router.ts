@@ -5,7 +5,12 @@
 
 import { generateObject, type LanguageModel } from 'ai';
 import { z } from 'zod';
-import { chatRouteSchema, type ChatRoute } from '@plantbase/shared';
+import {
+  chatRouteSchema,
+  type ChatRoute,
+  type ChatMessage,
+} from '@plantbase/shared';
+import { formatHistoryForPrompt } from './history.js';
 
 /** A router strukturált kimenete. */
 export interface RouterResult {
@@ -47,17 +52,20 @@ export interface RouterDeps {
   readonly generateObject?: GenerateObjectFn;
 }
 
-export type Router = (question: string) => Promise<RouterResult>;
+export type Router = (
+  question: string,
+  history?: readonly ChatMessage[],
+) => Promise<RouterResult>;
 
 /** Létrehozza a router-függvényt (a modell és a generateObject bekötve). */
 export function createRouter(deps: RouterDeps): Router {
   const run = deps.generateObject ?? defaultGenerateObject;
-  return async (question) => {
+  return async (question, history = []) => {
     const { object } = await run({
       model: deps.model,
       schema: routerSchema,
       system: ROUTER_SYSTEM,
-      prompt: `Kérdés: ${question}`,
+      prompt: `${formatHistoryForPrompt(history)}Kérdés: ${question}`,
     });
     return object;
   };

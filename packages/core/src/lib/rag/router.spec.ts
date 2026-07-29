@@ -1,5 +1,6 @@
 import { createRouter, type GenerateObjectFn } from './router.js';
 import type { LanguageModel } from 'ai';
+import type { ChatMessage } from '@plantbase/shared';
 
 const model = { modelId: 'fake' } as unknown as LanguageModel;
 
@@ -36,5 +37,22 @@ describe('createRouter', () => {
     }) as GenerateObjectFn;
     const router = createRouter({ model, generateObject });
     expect((await router('q')).route).toBe('both');
+  });
+
+  it('a history-t beleszövi a promptba', async () => {
+    let captured = '';
+    const router = createRouter({
+      model: {} as never,
+      generateObject: async ({ prompt }) => {
+        captured = prompt;
+        return { object: { route: 'knowledge', reasoning: 'ok' } };
+      },
+    });
+    await router('És a kaktuszok?', [
+      { role: 'user', content: 'Mesélj a pozsgásokról' },
+      { role: 'assistant', content: 'A pozsgások...' },
+    ]);
+    expect(captured).toContain('Mesélj a pozsgásokról');
+    expect(captured).toContain('És a kaktuszok?');
   });
 });
