@@ -6,6 +6,9 @@ import {
   createDefaultChatDeps,
   runRetrievalDebug,
   createDefaultRetrievalDebugDeps,
+  runCostEstimate,
+  createDefaultCostEstimateDeps,
+  loadModelPrices,
   getChunkStats,
   loadRagConfig,
 } from '@plantbase/core';
@@ -39,6 +42,18 @@ export function createBackendDeps(): BackendDeps {
         query,
         createDefaultRetrievalDebugDeps(overrides),
       );
+    },
+    costEstimate: async (query) => {
+      const stages = await runCostEstimate(
+        query,
+        createDefaultCostEstimateDeps(),
+      );
+      return {
+        query,
+        route: 'knowledge',
+        stages,
+        defaultPrices: loadModelPrices(),
+      };
     },
     chunkStats: () => getChunkStats(),
     health: computeHealth,

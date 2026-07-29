@@ -33,6 +33,9 @@ function makeDeps(over: Partial<BackendDeps> = {}): BackendDeps {
     retrievalDebug: async () => {
       throw new Error('nem hívandó');
     },
+    costEstimate: async () => {
+      throw new Error('nem hívandó');
+    },
     chunkStats: async () => {
       throw new Error('nem hívandó');
     },
@@ -171,6 +174,58 @@ describe('debug + health endpoints', () => {
       }),
     );
     const res = await request(app).get('/api/health');
+    expect(res.status).toBe(503);
+  });
+});
+
+describe('POST /api/debug/cost', () => {
+  it('visszaadja a stage-enkénti usage-et és a default árakat', async () => {
+    const app = createApp(
+      makeDeps({
+        costEstimate: async (query) => ({
+          query,
+          route: 'knowledge',
+          stages: [
+            {
+              stage: 'router',
+              model: 'claude-haiku-4-5',
+              inputTokens: 10,
+              outputTokens: 2,
+            },
+          ],
+          defaultPrices: {
+            'claude-haiku-4-5': { inputPerM: 1, outputPerM: 5 },
+          },
+        }),
+      }),
+    );
+    const res = await request(app)
+      .post('/api/debug/cost')
+      .send({ query: 'Hogyan öntözzem a pozsgást?' });
+    expect(res.status).toBe(200);
+    expect(res.body.route).toBe('knowledge');
+    expect(res.body.stages[0].stage).toBe('router');
+    expect(res.body.defaultPrices['claude-haiku-4-5']).toEqual({
+      inputPerM: 1,
+      outputPerM: 5,
+    });
+  });
+
+  it('400-at ad üres query-re', async () => {
+    const app = createApp(makeDeps());
+    const res = await request(app).post('/api/debug/cost').send({ query: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('503-at ad, ha hiányzik az OpenAI-kulcs', async () => {
+    const app = createApp(
+      makeDeps({
+        costEstimate: async () => {
+          throw new Error('OPENAI_API_KEY hiányzik vagy üres.');
+        },
+      }),
+    );
+    const res = await request(app).post('/api/debug/cost').send({ query: 'x' });
     expect(res.status).toBe(503);
   });
 });
