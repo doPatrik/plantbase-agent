@@ -92,9 +92,9 @@ Merged: PR #23. Tartalom: Vercel AI SDK-alapú hibrid multi-agent rendszer (`pac
 
 Az `apps/backend` Express alkalmazás (`createApp(deps)` DI-factory) a history-tudatos `runChat`-et és a `runRetrievalDebug` helpert szolgálja ki négy endpointon: `POST /api/chat` streaming válasz Vercel AI SDK v7 UI Message Stream-en (text-delta + DEBUG esetén `data-trace` + záró `data-sources`), `GET /api/debug/chunks` (tudásbázis chunk-statisztika), `POST /api/debug/search` (HyDE be/ki × rerank mátrix, `prevRank`-okkal), `GET /api/health`. Hiteles spec: `docs/superpowers/specs/2026-07-28-sp3b-backend-design.md`, terv: `docs/superpowers/plans/2026-07-28-sp3b-backend.md`.
 
-### SP4 — frontend (React + shadcn/ui) — ⏳ TERVEZETT
+### SP4 — frontend (React + shadcn/ui) — ✅ KÉSZ
 
-ChatGPT-szerű streaming UI (`useChat`), loading-state visszajelzés, DEBUG engine-trace panel (collapsible, ikonok, időrend).
+Az `apps/frontend` React + Vite + Tailwind v4 + shadcn/ui primitívekre épülő streaming chat UI. `useChat` (AI SDK v7) egyedi transporttal, ami a history-t a backend kontraktusára lapítja (`toChatMessages`); a tranziens `data-trace` részeket `onData`/`onFinish` akkumulálja üzenetenkénti engine-trace-szé. Két mód: DEBUG=true esetén stage-címkés `StatusIndicator` + kinyitható engine-trace panel (router→hyde→retrieval→rerank→guardrail→answer, usage/hibák), DEBUG=false esetén egyszerű „Gondolkodom…” spinner és nincs trace-panel. Válaszok alatt forrás-chipek (`data-sources`). Tesztek Vitest + React Testing Library, hálózat nélkül (mockolt `useChat`). `ChatView` a belépő (`main.tsx`), a scaffold `app/` eltávolítva.
 
 ## Környezeti kulcsok
 
