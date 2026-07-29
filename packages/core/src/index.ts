@@ -16,3 +16,4 @@ export * from './lib/rag/tools.js';
 export * from './lib/rag/catalog-agent.js';
 export * from './lib/rag/pipeline.js';
 export * from './lib/rag/retrieval-debug.js';
+export * from './lib/rag/cost-estimate.js';
