@@ -1,4 +1,9 @@
-import { loadConfig, loadEmbeddingConfig, loadRagConfig } from './config.js';
+import {
+  loadConfig,
+  loadEmbeddingConfig,
+  loadRagConfig,
+  loadModelPrices,
+} from './config.js';
 
 describe('loadConfig', () => {
   const saved = { ...process.env };
@@ -147,5 +152,57 @@ describe('loadRagConfig (SP3a extensions)', () => {
     expect(() => loadRagConfig('/nonexistent-dir-for-test')).toThrow(
       /RAG-konfiguráció/,
     );
+  });
+});
+
+describe('loadModelPrices', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it('a default Haiku/Sonnet/embedding árakat adja, ha nincs env-felülírás', () => {
+    process.env.OPENAI_API_KEY = 'sk-openai-123';
+    delete process.env.OPENAI_EMBEDDING_MODEL;
+    delete process.env.OPENAI_EMBEDDING_PRICE_PER_M;
+    delete process.env.RAG_PRICE_HAIKU_INPUT_PER_M;
+    delete process.env.RAG_PRICE_HAIKU_OUTPUT_PER_M;
+    delete process.env.RAG_PRICE_SONNET_INPUT_PER_M;
+    delete process.env.RAG_PRICE_SONNET_OUTPUT_PER_M;
+    const prices = loadModelPrices('/');
+    expect(prices['claude-haiku-4-5']).toEqual({
+      inputPerM: 1.0,
+      outputPerM: 5.0,
+    });
+    expect(prices['claude-sonnet-4-6']).toEqual({
+      inputPerM: 3.0,
+      outputPerM: 15.0,
+    });
+    expect(prices['text-embedding-3-small']).toEqual({
+      inputPerM: 0.02,
+      outputPerM: 0,
+    });
+  });
+
+  it('honorálja a RAG_PRICE_* env-felülírásokat', () => {
+    process.env.OPENAI_API_KEY = 'sk-openai-123';
+    process.env.RAG_PRICE_HAIKU_INPUT_PER_M = '2';
+    process.env.RAG_PRICE_HAIKU_OUTPUT_PER_M = '10';
+    process.env.RAG_PRICE_SONNET_INPUT_PER_M = '6';
+    process.env.RAG_PRICE_SONNET_OUTPUT_PER_M = '30';
+    const prices = loadModelPrices('/');
+    expect(prices['claude-haiku-4-5']).toEqual({
+      inputPerM: 2,
+      outputPerM: 10,
+    });
+    expect(prices['claude-sonnet-4-6']).toEqual({
+      inputPerM: 6,
+      outputPerM: 30,
+    });
+  });
+
+  it('throw-ol, ha az OPENAI_API_KEY hiányzik (az embedding-ár is kell)', () => {
+    delete process.env.OPENAI_API_KEY;
+    expect(() => loadModelPrices('/')).toThrow(/OPENAI_API_KEY/);
   });
 });
