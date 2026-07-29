@@ -94,10 +94,10 @@ export async function runChat(
   let answerStream: AsyncIterable<string> | undefined;
 
   if (needsKnowledge) {
-    const hydeDoc = await deps.hyde(question, history);
-    onTrace({ type: 'hyde', hydeDoc });
+    const hydeResult = await deps.hyde(question, history);
+    onTrace({ type: 'hyde', hydeDoc: hydeResult.text });
 
-    const retrieved = await deps.retrieve(hydeDoc);
+    const retrieved = await deps.retrieve(hydeResult.text);
     const maxRetrieved = retrieved.reduce(
       (m, c) => Math.max(m, c.similarity),
       0,

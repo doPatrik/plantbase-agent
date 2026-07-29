@@ -21,7 +21,7 @@ function chunk(id: number, sim: number): SearchResult {
 function makeDeps(over: Partial<RetrievalDebugDeps> = {}): RetrievalDebugDeps {
   const retrieved = [chunk(1, 0.6), chunk(2, 0.5), chunk(3, 0.4)];
   return {
-    hyde: async () => 'hipotetikus dokumentum',
+    hyde: async () => ({ text: 'hipotetikus dokumentum' }),
     embedQuery: async () => Array(1536).fill(0),
     searchChunks: async () => retrieved,
     // rerank megfordítja a sorrendet, topN=2

@@ -30,7 +30,7 @@ function baseDeps(overrides: Partial<ChatDeps>): ChatDeps {
   const events: TraceEvent[] = [];
   return {
     router: async (_q, _hist) => ({ route: 'knowledge', reasoning: 'r' }),
-    hyde: async (_q, _hist) => 'hyde doc',
+    hyde: async (_q, _hist) => ({ text: 'hyde doc' }),
     retrieve: async () => [chunk(0.6)],
     rerank: async (_q, chunks) => ({ chunks: [...chunks], degraded: false }),
     answer: (_input) => ({
@@ -103,7 +103,7 @@ describe('runChat', () => {
         router: async () => ({ route: 'catalog', reasoning: 'r' }),
         hyde: async () => {
           hydeCalled = true;
-          return 'x';
+          return { text: 'x' };
         },
       }),
     );
