@@ -67,7 +67,7 @@ export async function runRetrievalDebug(
   query: string,
   deps: RetrievalDebugDeps,
 ): Promise<RetrievalDebugResult> {
-  const hydeDoc = await deps.hyde(query);
+  const hydeDoc = (await deps.hyde(query)).text;
   const raw = await runBranch(query, query, deps);
   const hyde = await runBranch(hydeDoc, query, deps);
   return { query, hydeDoc, raw, hyde };

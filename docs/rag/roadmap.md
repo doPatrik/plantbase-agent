@@ -96,6 +96,10 @@ Az `apps/backend` Express alkalmazás (`createApp(deps)` DI-factory) a history-t
 
 Az `apps/frontend` React + Vite + Tailwind v4 + shadcn/ui primitívekre épülő streaming chat UI. `useChat` (AI SDK v7) egyedi transporttal, ami a history-t a backend kontraktusára lapítja (`toChatMessages`); a tranziens `data-trace` részeket `onData`/`onFinish` akkumulálja üzenetenkénti engine-trace-szé. Két mód: DEBUG=true esetén stage-címkés `StatusIndicator` + kinyitható engine-trace panel (router→hyde→retrieval→rerank→guardrail→answer, usage/hibák), DEBUG=false esetén egyszerű „Gondolkodom…” spinner és nincs trace-panel. Válaszok alatt forrás-chipek (`data-sources`). Tesztek Vitest + React Testing Library, hálózat nélkül (mockolt `useChat`). `ChatView` a belépő (`main.tsx`), a scaffold `app/` eltávolítva.
 
+### SP5 — Költség-becslő — ✅ KÉSZ
+
+Stage-enkénti USD-bontás a tudás-útra. Core: usage-átadás a router/hyde/rerank/answer stage-eken (`StageUsage`), a `runChat` ezekből `usage` típusú trace-eseményeket emittál stage-enként (mellékhaszon: a DEBUG engine-trace panel usage-sorai a chat fülön is), plusz egy dedikált `runCostEstimate(query, deps)`, ami a fenti négy stage mellé egy önálló `embedQueryWithUsage` hívással az embedding-usage-t is begyűjti (a chat-pipeline `Retrieve`-je tudatosan nem lett usage-gyel bővítve, YAGNI-vágás). Ár-modul (`loadModelPrices`, env-felülírással) + megosztott `computeStageCost`/DTO-k (`packages/shared`). Backend: `POST /api/debug/cost { query }` → `{ route, stages, defaultPrices }`, üres query-re 400. Frontend: tab-shell (Chat / Költség-becslő) + `CostEstimatorView` táblázattal és élő, hálózati hívás nélküli ár-szerkesztéssel. Live e2e (valódi Anthropic/OpenAI hívásokkal, valódi Postgres-szel) zöld: `POST /api/debug/cost` 5 stage-et ad vissza (router/hyde/embedding/rerank/answer) valós, nem-nulla token-számokkal és nem-üres `defaultPrices`-szel; `POST /api/chat` DEBUG=true mellett `data-trace` `usage` eseményeket streamel router/hyde/rerank/answer stage-ekhez; üres query 400-at ad.
+
 ## Környezeti kulcsok
 
 - `ANTHROPIC_API_KEY` — megvan (agent + HyDE/rerank/answer).

@@ -8,9 +8,11 @@ import { createUIMessageStream, pipeUIMessageStreamToResponse } from 'ai';
 import {
   chatRequestSchema,
   retrievalDebugRequestSchema,
+  costEstimateRequestSchema,
   type ChatMessage,
   type OnTrace,
   type RetrievalDebugResult,
+  type CostEstimate,
 } from '@plantbase/shared';
 import type { ChatRun, ChunkStats } from '@plantbase/core';
 
@@ -32,6 +34,7 @@ export interface BackendDeps {
     query: string,
     opts: { topK?: number; rerankTopN?: number },
   ) => Promise<RetrievalDebugResult>;
+  readonly costEstimate: (query: string) => Promise<CostEstimate>;
   readonly chunkStats: () => Promise<ChunkStats>;
   readonly health: () => Promise<HealthReport>;
   readonly debug: boolean;
@@ -117,6 +120,26 @@ function registerDebug(app: Express, deps: BackendDeps): void {
   });
 }
 
+function registerCost(app: Express, deps: BackendDeps): void {
+  app.post('/api/debug/cost', async (req: Request, res: Response) => {
+    const parsed = costEstimateRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: parsed.error.issues[0]?.message ?? 'Hibás kérés.' });
+      return;
+    }
+    try {
+      res.json(await deps.costEstimate(parsed.data.query));
+    } catch (error) {
+      const status = isMissingKeyError(error) ? 503 : 500;
+      res.status(status).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+}
+
 function registerHealth(app: Express, deps: BackendDeps): void {
   app.get('/api/health', async (_req: Request, res: Response) => {
     const report = await deps.health();
@@ -130,6 +153,7 @@ export function createApp(deps: BackendDeps): Express {
   app.use(express.json());
   registerChat(app, deps);
   registerDebug(app, deps);
+  registerCost(app, deps);
   registerHealth(app, deps);
   return app;
 }

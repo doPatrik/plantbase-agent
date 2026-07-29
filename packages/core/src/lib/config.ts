@@ -190,3 +190,75 @@ export function loadRagConfig(cwd: string = process.cwd()): RagConfig {
       result.data.RAG_GROUNDING_THRESHOLD ?? DEFAULT_GROUNDING_THRESHOLD,
   };
 }
+
+/** Modellenkénti listaár (USD / 1M token) — a költség-becslőhöz. */
+export interface ModelPrice {
+  readonly inputPerM: number;
+  readonly outputPerM: number;
+}
+
+const HAIKU_MODEL_ID = 'claude-haiku-4-5';
+const SONNET_MODEL_ID = 'claude-sonnet-4-6';
+const DEFAULT_HAIKU_INPUT_PRICE = 1.0;
+const DEFAULT_HAIKU_OUTPUT_PRICE = 5.0;
+const DEFAULT_SONNET_INPUT_PRICE = 3.0;
+const DEFAULT_SONNET_OUTPUT_PRICE = 15.0;
+
+const priceEnvSchema = z.object({
+  RAG_PRICE_HAIKU_INPUT_PER_M: z.coerce
+    .number()
+    .nonnegative('RAG_PRICE_HAIKU_INPUT_PER_M nem lehet negatív.')
+    .optional(),
+  RAG_PRICE_HAIKU_OUTPUT_PER_M: z.coerce
+    .number()
+    .nonnegative('RAG_PRICE_HAIKU_OUTPUT_PER_M nem lehet negatív.')
+    .optional(),
+  RAG_PRICE_SONNET_INPUT_PER_M: z.coerce
+    .number()
+    .nonnegative('RAG_PRICE_SONNET_INPUT_PER_M nem lehet negatív.')
+    .optional(),
+  RAG_PRICE_SONNET_OUTPUT_PER_M: z.coerce
+    .number()
+    .nonnegative('RAG_PRICE_SONNET_OUTPUT_PER_M nem lehet negatív.')
+    .optional(),
+});
+
+/**
+ * Betölti a modellenkénti default listaárakat (Haiku/Sonnet/embedding), env-ből
+ * felülírhatóan. A kulcsok a DEFAULT modell-azonosítók (claude-haiku-4-5,
+ * claude-sonnet-4-6, text-embedding-3-small) — ha valaki egyedi RAG_*_MODEL-t
+ * állít be, arra nem lesz ár-bejegyzés (a becslő ismeretlen-ár-ként kezeli).
+ * @throws {Error} ha az OPENAI_API_KEY hiányzik (az embedding-ár ebből épül).
+ */
+export function loadModelPrices(
+  cwd: string = process.cwd(),
+): Record<string, ModelPrice> {
+  loadDotenvFromNearest(cwd);
+  const result = priceEnvSchema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Hibás ár-konfiguráció: ${issues}`);
+  }
+  const embedding = loadEmbeddingConfig(cwd);
+  return {
+    [HAIKU_MODEL_ID]: {
+      inputPerM:
+        result.data.RAG_PRICE_HAIKU_INPUT_PER_M ?? DEFAULT_HAIKU_INPUT_PRICE,
+      outputPerM:
+        result.data.RAG_PRICE_HAIKU_OUTPUT_PER_M ?? DEFAULT_HAIKU_OUTPUT_PRICE,
+    },
+    [SONNET_MODEL_ID]: {
+      inputPerM:
+        result.data.RAG_PRICE_SONNET_INPUT_PER_M ?? DEFAULT_SONNET_INPUT_PRICE,
+      outputPerM:
+        result.data.RAG_PRICE_SONNET_OUTPUT_PER_M ??
+        DEFAULT_SONNET_OUTPUT_PRICE,
+    },
+    [embedding.model]: {
+      inputPerM: embedding.pricePerMillionTokens,
+      outputPerM: 0,
+    },
+  };
+}

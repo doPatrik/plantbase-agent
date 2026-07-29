@@ -8,17 +8,29 @@ import { streamText, type LanguageModel } from 'ai';
 import type { SourceRef, ChatMessage } from '@plantbase/shared';
 import type { SearchResult } from '../knowledge-store.js';
 import { formatHistoryForPrompt } from './history.js';
+import type { StageUsage } from './usage.js';
 
-/** Szűk, injektálható streamText (csak amit az answer használ). */
+/** Szűk, injektálható streamText (csak amit az answer használ). A usage (SP5)
+ *  Promise, mert a streamText usage-e csak a stream teljes elfogyasztása után áll
+ *  rendelkezésre. */
 export type AnswerStreamFn = (args: {
   model: LanguageModel;
   system: string;
   prompt: string;
-}) => { textStream: AsyncIterable<string> };
+}) => {
+  textStream: AsyncIterable<string>;
+  usage?: Promise<{ inputTokens: number; outputTokens: number }>;
+};
 
 const defaultStreamAnswer: AnswerStreamFn = ({ model, system, prompt }) => {
-  const { textStream } = streamText({ model, system, prompt });
-  return { textStream };
+  const { textStream, usage } = streamText({ model, system, prompt });
+  return {
+    textStream,
+    usage: Promise.resolve(usage).then((u) => ({
+      inputTokens: u.inputTokens ?? 0,
+      outputTokens: u.outputTokens ?? 0,
+    })),
+  };
 };
 
 const ANSWER_SYSTEM = `Te a Plantbase növény-asszisztens vagy. Válaszolj magyarul, tömören, KIZÁRÓLAG a megadott forrásrészletek (és ha van, a katalógus-adatok) alapján. Ha a részletek nem fedik le a kérdést, mondd ki őszintén — SOHA ne találj ki tényt, növényt, árat vagy adatot. A válasz végén sorold fel a felhasznált forrásokat (cím, és ha van, URL vagy fájlnév).`;
@@ -64,10 +76,14 @@ export interface AnswerInput {
 export interface AnswerResult {
   readonly textStream: AsyncIterable<string>;
   readonly sources: readonly SourceRef[];
+  /** A válasz-hívás token-usage-e (SP5); a stream teljes elfogyasztása után resolve-ol. */
+  readonly usage?: Promise<StageUsage>;
 }
 
 export interface AnswerDeps {
   readonly model: LanguageModel;
+  /** A trace-ben/becslőben megjelenő modell-azonosító (SP5). */
+  readonly modelId?: string;
   readonly streamAnswer?: AnswerStreamFn;
 }
 
@@ -83,11 +99,19 @@ export function createAnswer(deps: AnswerDeps): Answer {
       ? `\n\nKatalógus-adatok:\n${input.catalogContext}`
       : '';
     const historyBlock = formatHistoryForPrompt(input.history ?? []);
-    const { textStream } = run({
+    const { textStream, usage } = run({
       model: deps.model,
       system: ANSWER_SYSTEM,
       prompt: `${historyBlock}Kérdés: ${input.question}\n\nForrásrészletek:\n${context}${catalog}`,
     });
-    return { textStream, sources };
+    return {
+      textStream,
+      sources,
+      usage: usage?.then((u) => ({
+        model: deps.modelId ?? 'unknown',
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+      })),
+    };
   };
 }
