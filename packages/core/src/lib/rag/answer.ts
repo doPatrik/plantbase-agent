@@ -5,8 +5,9 @@
 // a chunkokból KÓDDAL képezzük (dokumentumonként egyszer), nem a modellre bízzuk.
 
 import { streamText, type LanguageModel } from 'ai';
-import type { SourceRef } from '@plantbase/shared';
+import type { SourceRef, ChatMessage } from '@plantbase/shared';
 import type { SearchResult } from '../knowledge-store.js';
+import { formatHistoryForPrompt } from './history.js';
 
 /** Szűk, injektálható streamText (csak amit az answer használ). */
 export type AnswerStreamFn = (args: {
@@ -56,6 +57,8 @@ export interface AnswerInput {
   readonly chunks: readonly SearchResult[];
   /** Katalógus-kontextus a "both" útvonalon (a catalog-agent szöveges eredménye). */
   readonly catalogContext?: string;
+  /** Az eddigi beszélgetés (koherens többfordulós válaszhoz). */
+  readonly history?: readonly ChatMessage[];
 }
 
 export interface AnswerResult {
@@ -79,10 +82,11 @@ export function createAnswer(deps: AnswerDeps): Answer {
     const catalog = input.catalogContext
       ? `\n\nKatalógus-adatok:\n${input.catalogContext}`
       : '';
+    const historyBlock = formatHistoryForPrompt(input.history ?? []);
     const { textStream } = run({
       model: deps.model,
       system: ANSWER_SYSTEM,
-      prompt: `Kérdés: ${input.question}\n\nForrásrészletek:\n${context}${catalog}`,
+      prompt: `${historyBlock}Kérdés: ${input.question}\n\nForrásrészletek:\n${context}${catalog}`,
     });
     return { textStream, sources };
   };
