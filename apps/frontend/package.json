@@ -6,10 +6,11 @@
     "name": "frontend"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.44",
     "@plantbase/shared": "workspace:*",
     "@radix-ui/react-collapsible": "^1.1.20",
     "@radix-ui/react-slot": "^1.3.3",
-    "ai": "^7.0.37",
+    "ai": "^7.0.41",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.27.0",
