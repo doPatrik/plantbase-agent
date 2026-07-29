@@ -50,6 +50,34 @@ describe('runRetrievalDebug', () => {
     expect(out.hyde.retrieval).toHaveLength(3);
   });
 
+  it('a rerankTopN korlátozza a rerank-eredmények számát, a retrieval listát nem', async () => {
+    const retrieved = [
+      chunk(1, 0.9),
+      chunk(2, 0.8),
+      chunk(3, 0.7),
+      chunk(4, 0.6),
+    ];
+    const out = await runRetrievalDebug(
+      'kérdés',
+      makeDeps({
+        searchChunks: async () => retrieved,
+        // rerank megfordítja a sorrendet, de 4 elemet ad vissza (a stage maga nem vág)
+        rerank: async (_q, chunks) => ({
+          chunks: [chunks[3], chunks[2], chunks[1], chunks[0]],
+          degraded: false,
+        }),
+        rerankTopN: 2,
+      }),
+    );
+    expect(out.raw.retrieval).toHaveLength(4);
+    expect(out.hyde.retrieval).toHaveLength(4);
+    expect(out.raw.rerank.results).toHaveLength(2);
+    expect(out.hyde.rerank.results).toHaveLength(2);
+    // az első két reranked találat a nyers 4. és 3. elem (prevRank=3,2)
+    expect(out.raw.rerank.results[0].prevRank).toBe(3);
+    expect(out.raw.rerank.results[1].prevRank).toBe(2);
+  });
+
   it('a HyDE-ágban a HyDE-dokumentumot embeddeli, a raw-ban a nyers query-t', async () => {
     const embedded: string[] = [];
     const out = await runRetrievalDebug(

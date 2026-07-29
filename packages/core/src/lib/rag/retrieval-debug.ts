@@ -50,10 +50,12 @@ async function runBranch(
   const retrieved = await deps.searchChunks(embedding, deps.topK);
   const outcome = await deps.rerank(rerankQuestion, retrieved);
   const rankById = new Map(retrieved.map((c, i) => [c.chunk_id, i]));
-  const results: RerankedDebugHit[] = outcome.chunks.map((c, i) => ({
-    ...toHit(c, i),
-    prevRank: rankById.get(c.chunk_id) ?? -1,
-  }));
+  const results: RerankedDebugHit[] = outcome.chunks
+    .slice(0, deps.rerankTopN)
+    .map((c, i) => ({
+      ...toHit(c, i),
+      prevRank: rankById.get(c.chunk_id) ?? -1,
+    }));
   return {
     retrieval: retrieved.map((c, i) => toHit(c, i)),
     rerank: { degraded: outcome.degraded, results },
@@ -78,13 +80,14 @@ export function createDefaultRetrievalDebugDeps(
   const agentConfig = loadConfig();
   const ragConfig = loadRagConfig();
   const models = createRagModels(ragConfig, agentConfig.apiKey);
+  const rerankTopN = overrides.rerankTopN ?? ragConfig.rerankTopN;
   return {
     hyde: createHyde({ model: models.hyde }),
     embedQuery: (text) => defaultEmbedQuery(text),
     searchChunks: (embedding, k) => defaultSearchChunks(embedding, k),
-    rerank: createRerank({ model: models.rerank, topN: ragConfig.rerankTopN }),
+    rerank: createRerank({ model: models.rerank, topN: rerankTopN }),
     topK: ragConfig.topK,
-    rerankTopN: ragConfig.rerankTopN,
+    rerankTopN,
     ...overrides,
   };
 }
