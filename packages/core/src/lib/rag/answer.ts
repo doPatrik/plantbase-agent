@@ -26,7 +26,7 @@ const defaultStreamAnswer: AnswerStreamFn = ({ model, system, prompt }) => {
   const { textStream, usage } = streamText({ model, system, prompt });
   return {
     textStream,
-    usage: usage.then((u) => ({
+    usage: Promise.resolve(usage).then((u) => ({
       inputTokens: u.inputTokens ?? 0,
       outputTokens: u.outputTokens ?? 0,
     })),
