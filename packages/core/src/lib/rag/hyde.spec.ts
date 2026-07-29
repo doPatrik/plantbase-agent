@@ -1,6 +1,5 @@
 import { createHyde, type GenerateTextFn } from './hyde.js';
 import type { LanguageModel } from 'ai';
-import type { ChatMessage } from '@plantbase/shared';
 
 const model = { modelId: 'fake' } as unknown as LanguageModel;
 
