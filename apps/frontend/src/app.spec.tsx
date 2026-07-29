@@ -12,9 +12,11 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /Költség-becslő/i }));
     expect(
-      screen.getAllByText('Költség-becslő').find((el) => el.tagName === 'DIV'),
+      screen.getByRole('heading', { name: /Költség-becslő/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/Kérdezz/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Küldés/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('vissza lehet váltani Chat nézetre', () => {
