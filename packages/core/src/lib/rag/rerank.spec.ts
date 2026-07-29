@@ -57,4 +57,32 @@ describe('createRerank', () => {
     expect(outcome.degraded).toBe(false);
     expect(called).toBe(false);
   });
+
+  it('sikeres rerank esetén a usage-et StageUsage-ként adja vissza', async () => {
+    const generateObject = (async () => ({
+      object: { ranking: [2, 0] },
+      usage: { inputTokens: 300, outputTokens: 12 },
+    })) as GenerateObjectFn;
+    const rerank = createRerank({
+      model,
+      topN: 2,
+      modelId: 'claude-haiku-4-5',
+      generateObject,
+    });
+    const outcome = await rerank('kérdés', input);
+    expect(outcome.usage).toEqual({
+      model: 'claude-haiku-4-5',
+      inputTokens: 300,
+      outputTokens: 12,
+    });
+  });
+
+  it('degradált (hibás) rerank esetén a usage undefined', async () => {
+    const generateObject = (async () => {
+      throw new Error('rerank model down');
+    }) as GenerateObjectFn;
+    const rerank = createRerank({ model, topN: 2, generateObject });
+    const outcome = await rerank('kérdés', input);
+    expect(outcome.usage).toBeUndefined();
+  });
 });
