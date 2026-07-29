@@ -37,4 +37,19 @@ describe('createRouter', () => {
     const router = createRouter({ model, generateObject });
     expect((await router('q')).route).toBe('both');
   });
+
+  it('a history-t beleszövi a promptba', async () => {
+    let captured = '';
+    const generateObject = (async ({ prompt }) => {
+      captured = prompt;
+      return { object: { route: 'knowledge', reasoning: 'ok' } };
+    }) as GenerateObjectFn;
+    const router = createRouter({ model, generateObject });
+    await router('És a kaktuszok?', [
+      { role: 'user', content: 'Mesélj a pozsgásokról' },
+      { role: 'assistant', content: 'A pozsgások...' },
+    ]);
+    expect(captured).toContain('Mesélj a pozsgásokról');
+    expect(captured).toContain('És a kaktuszok?');
+  });
 });

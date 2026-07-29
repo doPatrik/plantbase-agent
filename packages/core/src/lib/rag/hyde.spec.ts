@@ -15,4 +15,20 @@ describe('createHyde', () => {
     expect(doc).toContain('öntözni');
     expect(capturedPrompt).toContain('Hogyan öntözzem a pozsgást?');
   });
+
+  it('a history-t figyelembe veszi a promptban', async () => {
+    let captured = '';
+    const hyde = createHyde({
+      model: {} as never,
+      generateText: async ({ prompt }) => {
+        captured = prompt;
+        return { text: 'hipotetikus' };
+      },
+    });
+    await hyde('És télen?', [
+      { role: 'user', content: 'Hogyan öntözzem a monsterát?' },
+    ]);
+    expect(captured).toContain('Hogyan öntözzem a monsterát?');
+    expect(captured).toContain('És télen?');
+  });
 });

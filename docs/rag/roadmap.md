@@ -88,9 +88,9 @@ Külön `apps/rag-builder` Nx app: `seed/knowledge` beolvasás → **chunkolás*
 
 Merged: PR #23. Tartalom: Vercel AI SDK-alapú hibrid multi-agent rendszer (`packages/core/src/lib/rag/` modul: models, router, hyde, retrieval, rerank, guardrail, answer, tools, catalog-agent, pipeline), streaming CLI + debug trace (`DEBUG=true` a stderr-re), `packages/shared` (engine-trace + chat DTO-k), guardrail küszöb `RAG_GROUNDING_THRESHOLD=0.35`. A régi kézzel írt tool-use loop (`ask-agent.ts`/`agent-tools.ts`) SP3a-ban törölve. Hiteles spec: `docs/superpowers/specs/2026-07-28-sp3a-rag-pipeline-design.md`, terv: `docs/superpowers/plans/2026-07-28-sp3a-rag-pipeline.md`.
 
-#### SP3b — backend (Express HTTP) — ⏳ KÖVETKEZŐ
+#### SP3b — backend (Express HTTP) — ✅ KÉSZ
 
-Orchestrator agent-loop (`stopWhen: stepCountIs(MAX_AGENT_ITERATIONS)`) web-endpointként. `POST /api/chat` streaming, debug endpointok, DEBUG engine-trace a data-stream mellékcsatornáján.
+Az `apps/backend` Express alkalmazás (`createApp(deps)` DI-factory) a history-tudatos `runChat`-et és a `runRetrievalDebug` helpert szolgálja ki négy endpointon: `POST /api/chat` streaming válasz Vercel AI SDK v7 UI Message Stream-en (text-delta + DEBUG esetén `data-trace` + záró `data-sources`), `GET /api/debug/chunks` (tudásbázis chunk-statisztika), `POST /api/debug/search` (HyDE be/ki × rerank mátrix, `prevRank`-okkal), `GET /api/health`. Hiteles spec: `docs/superpowers/specs/2026-07-28-sp3b-backend-design.md`, terv: `docs/superpowers/plans/2026-07-28-sp3b-backend.md`.
 
 ### SP4 — frontend (React + shadcn/ui) — ⏳ TERVEZETT
 

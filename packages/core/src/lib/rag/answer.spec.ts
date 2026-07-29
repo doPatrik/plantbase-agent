@@ -75,4 +75,26 @@ describe('createAnswer', () => {
     }).textStream;
     expect(capturedPrompt).toContain('Kentia pálma: 18900 Ft');
   });
+
+  it('a history bekerül a prompt-ba', () => {
+    let captured = '';
+    const answer = createAnswer({
+      model: {} as never,
+      streamAnswer: ({ prompt }) => {
+        captured = prompt;
+        return {
+          textStream: (async function* () {
+            yield 'ok';
+          })(),
+        };
+      },
+    });
+    answer({
+      question: 'És a fényigénye?',
+      chunks: [],
+      history: [{ role: 'user', content: 'Mesélj a szanszevériáról' }],
+    });
+    expect(captured).toContain('Mesélj a szanszevériáról');
+    expect(captured).toContain('És a fényigénye?');
+  });
 });

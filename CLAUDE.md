@@ -48,6 +48,12 @@ pnpm plantbase ask "Mennyibe kerül a legolcsóbb pozsgás?" # katalógus-út (S
 
 # RAG env-kulcsok (modellek, topK, küszöb): lásd .env.example
 
+# Backend (SP3b: Express + AI SDK v7 UI Message Stream):
+pnpm nx serve backend                 # build + node dist/main.js (PORT, default 3000)
+pnpm --filter @plantbase/backend exec tsx src/main.ts   # dev-loop tsx-szel
+# Endpointok: POST /api/chat (streaming), GET /api/debug/chunks,
+#             POST /api/debug/search (HyDE ki/be × rerank), GET /api/health
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build
@@ -63,6 +69,7 @@ pnpm nx run-many -t test typecheck build
 - A **tudásbázis** (`documents` / `document_chunks`) sémáját/migrációját/seedjét a **Prisma** kezeli, de a **futásidejű vektorkeresés `pg`-vel** megy (mint a `runSql`): keresés/statisztika a **read-only** kapcsolaton, az embedding-írás (rag-builder) az RW-n. A pgvector kiterjesztést a migráció és a `docker/initdb` is engedélyezi.
 - Az **embedding** kizárólag OpenAI `text-embedding-3-small` (1536 dim), a Vercel AI SDK `embedMany`-n át (`packages/core/src/lib/embedding.ts`). Az embedding-kulcsot (`OPENAI_API_KEY`) a tudás-út (RAG retrieval) igényli; a tiszta katalógus-út (SQL) e nélkül is fut.
 - A pgvector HNSW index egy `Unsupported("vector(1536)")` típusú oszlopon él; `prisma migrate dev` lehetséges follow-up migráció után az index DROP-olódhat — ezt el kell **utasítani**, helyette `prisma migrate deploy` használandó a meglévő migrációkhoz.
+- A **backend** (`apps/backend`) a `createApp(deps)` DI-factoryn át áll össze (tesztelhetőség: fake `deps` supertesttel); a HTTP-streaming a Vercel AI SDK v7 UI Message Stream-je (`createUIMessageStream` + `pipeUIMessageStreamToResponse`), a trace `data-trace` partként kizárólag `DEBUG=true` mellett megy ki.
 
 ## Konvenciók
 
