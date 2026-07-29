@@ -52,4 +52,31 @@ describe('createRouter', () => {
     expect(captured).toContain('Mesélj a pozsgásokról');
     expect(captured).toContain('És a kaktuszok?');
   });
+
+  it('a generateObject usage-ét a modelId-vel StageUsage-ként adja vissza', async () => {
+    const generateObject = (async () => ({
+      object: { route: 'catalog', reasoning: 'r' },
+      usage: { inputTokens: 120, outputTokens: 8 },
+    })) as GenerateObjectFn;
+    const router = createRouter({
+      model,
+      modelId: 'claude-haiku-4-5',
+      generateObject,
+    });
+    const result = await router('kérdés');
+    expect(result.usage).toEqual({
+      model: 'claude-haiku-4-5',
+      inputTokens: 120,
+      outputTokens: 8,
+    });
+  });
+
+  it('usage nélküli generateObject esetén a usage undefined', async () => {
+    const generateObject = (async () => ({
+      object: { route: 'catalog', reasoning: 'r' },
+    })) as GenerateObjectFn;
+    const router = createRouter({ model, generateObject });
+    const result = await router('kérdés');
+    expect(result.usage).toBeUndefined();
+  });
 });
