@@ -58,6 +58,10 @@ pnpm --filter @plantbase/backend exec tsx src/main.ts   # dev-loop tsx-szel
 pnpm nx serve frontend            # Vite dev server (4200), /api proxy → backend (3000)
 #   Fusson a backend is: (DEBUG=true) pnpm nx serve backend
 
+# Költség-becslő (SP5: stage-enkénti USD-bontás a tudás-útra; a frontend "Költség-becslő"
+# fülén, vagy közvetlenül): valódi LLM/embedding-hívásokat futtat, pénzbe kerül.
+# POST /api/debug/cost { "query": "..." } → { stages: [...], defaultPrices: {...} }
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build
