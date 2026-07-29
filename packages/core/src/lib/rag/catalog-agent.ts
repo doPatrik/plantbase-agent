@@ -12,11 +12,13 @@ import {
   type ToolSet,
 } from 'ai';
 import { buildSystemPrompt } from '../schema-context.js';
+import { toModelMessages } from './history.js';
 import {
   createCatalogTools,
   type ListCategoriesFn,
   type RunSqlFn,
 } from './tools.js';
+import type { ChatMessage } from '@plantbase/shared';
 
 /** Szűk, injektálható streamText a katalógus-úthoz (tools + stopWhen). */
 export type CatalogStreamFn = (args: {
@@ -52,7 +54,10 @@ export interface CatalogAgentDeps {
   readonly streamCatalog?: CatalogStreamFn;
 }
 
-export type CatalogAgent = (question: string) => {
+export type CatalogAgent = (
+  question: string,
+  history?: readonly ChatMessage[],
+) => {
   textStream: AsyncIterable<string>;
 };
 
@@ -64,8 +69,8 @@ export function createCatalogAgent(deps: CatalogAgentDeps): CatalogAgent {
     listCategories: deps.listCategories,
   });
   const system = buildSystemPrompt({ databaseAvailable: true });
-  return (question) => {
-    const messages: ModelMessage[] = [{ role: 'user', content: question }];
+  return (question, history = []) => {
+    const messages = toModelMessages(history, question);
     return run({
       model: deps.model,
       system,
