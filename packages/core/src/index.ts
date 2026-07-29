@@ -15,3 +15,4 @@ export * from './lib/rag/answer.js';
 export * from './lib/rag/tools.js';
 export * from './lib/rag/catalog-agent.js';
 export * from './lib/rag/pipeline.js';
+export * from './lib/rag/retrieval-debug.js';
