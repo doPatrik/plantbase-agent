@@ -196,3 +196,76 @@ describe('runChat', () => {
     expect(seen.answerHist).toBe(2);
   });
 });
+
+describe('runChat — usage trace-emisszió (SP5)', () => {
+  it('router/hyde/rerank/answer usage-ét usage trace-eseményként emittálja', async () => {
+    const events: TraceEvent[] = [];
+    const run = await runChat(
+      userMsg('Hogyan öntözzem a pozsgást?'),
+      baseDeps({
+        onTrace: (e) => events.push(e),
+        router: async () => ({
+          route: 'knowledge',
+          reasoning: 'r',
+          usage: { model: 'router-model', inputTokens: 10, outputTokens: 2 },
+        }),
+        hyde: async () => ({
+          text: 'hyde doc',
+          usage: { model: 'hyde-model', inputTokens: 20, outputTokens: 5 },
+        }),
+        rerank: async (_q, chunks) => ({
+          chunks: [...chunks],
+          degraded: false,
+          usage: { model: 'rerank-model', inputTokens: 30, outputTokens: 8 },
+        }),
+        answer: () => ({
+          textStream: (async function* () {
+            yield 'Válasz';
+          })(),
+          sources: [],
+          usage: Promise.resolve({
+            model: 'answer-model',
+            inputTokens: 40,
+            outputTokens: 15,
+          }),
+        }),
+      }),
+    );
+    for await (const _ of run.textStream) {
+      /* drain, hogy az answer usage promise-a resolve-oljon */
+    }
+    // Az answer usage fire-and-forget (a stream drain-je után resolve-ol) —
+    // egy microtask-tick-et adunk neki, mielőtt az events-et vizsgáljuk.
+    await Promise.resolve();
+    const usageEvents = events.filter((e) => e.type === 'usage');
+    expect(usageEvents.map((e) => (e as { stage: string }).stage)).toEqual([
+      'router',
+      'hyde',
+      'rerank',
+      'answer',
+    ]);
+    expect(usageEvents[0]).toMatchObject({
+      model: 'router-model',
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+    expect(usageEvents[3]).toMatchObject({
+      model: 'answer-model',
+      inputTokens: 40,
+      outputTokens: 15,
+    });
+  });
+
+  it('usage nélküli fake stage-ek esetén nincs usage trace-esemény', async () => {
+    const events: TraceEvent[] = [];
+    const run = await runChat(
+      userMsg('kérdés'),
+      baseDeps({ onTrace: (e) => events.push(e) }),
+    );
+    for await (const _ of run.textStream) {
+      /* drain */
+    }
+    await Promise.resolve();
+    expect(events.some((e) => e.type === 'usage')).toBe(false);
+  });
+});

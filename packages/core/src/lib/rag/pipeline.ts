@@ -70,8 +70,12 @@ export async function runChat(
   const question = deriveQuestion(messages);
   const history = messages.slice(0, -1);
 
-  const { route, reasoning } = await deps.router(question, history);
+  const routerResult = await deps.router(question, history);
+  const { route, reasoning } = routerResult;
   onTrace({ type: 'router', route, reasoning });
+  if (routerResult.usage) {
+    onTrace({ type: 'usage', stage: 'router', ...routerResult.usage });
+  }
 
   let resolveResult!: (answer: RagAnswer) => void;
   const result = new Promise<RagAnswer>((resolve) => {
@@ -96,6 +100,9 @@ export async function runChat(
   if (needsKnowledge) {
     const hydeResult = await deps.hyde(question, history);
     onTrace({ type: 'hyde', hydeDoc: hydeResult.text });
+    if (hydeResult.usage) {
+      onTrace({ type: 'usage', stage: 'hyde', ...hydeResult.usage });
+    }
 
     const retrieved = await deps.retrieve(hydeResult.text);
     const maxRetrieved = retrieved.reduce(
@@ -116,6 +123,9 @@ export async function runChat(
       outputCount: reranked.chunks.length,
       degraded: reranked.degraded,
     });
+    if (reranked.usage) {
+      onTrace({ type: 'usage', stage: 'rerank', ...reranked.usage });
+    }
 
     const grounding = checkGrounding(reranked.chunks, deps.groundingThreshold);
     onTrace({
@@ -145,6 +155,9 @@ export async function runChat(
     });
     sources = answered.sources;
     answerStream = answered.textStream;
+    answered.usage?.then((usage) =>
+      onTrace({ type: 'usage', stage: 'answer', ...usage }),
+    );
   } else if (needsCatalog) {
     // Tiszta katalógus-út: a catalog-agent streamje megy tovább, nincs forrás.
     answerStream = deps.catalogAgent(question, history).textStream;
@@ -193,11 +206,21 @@ export function createDefaultChatDeps(
   const ragConfig = loadRagConfig();
   const models = createRagModels(ragConfig, agentConfig.apiKey);
   return {
-    router: createRouter({ model: models.router }),
-    hyde: createHyde({ model: models.hyde }),
+    router: createRouter({
+      model: models.router,
+      modelId: ragConfig.routerModel,
+    }),
+    hyde: createHyde({ model: models.hyde, modelId: ragConfig.hydeModel }),
     retrieve: createRetrieve({ topK: ragConfig.topK }),
-    rerank: createRerank({ model: models.rerank, topN: ragConfig.rerankTopN }),
-    answer: createAnswer({ model: models.answer }),
+    rerank: createRerank({
+      model: models.rerank,
+      topN: ragConfig.rerankTopN,
+      modelId: ragConfig.rerankModel,
+    }),
+    answer: createAnswer({
+      model: models.answer,
+      modelId: ragConfig.answerModel,
+    }),
     catalogAgent: createCatalogAgent({
       model: models.catalog,
       runSql: (q) => defaultRunSql(q),
