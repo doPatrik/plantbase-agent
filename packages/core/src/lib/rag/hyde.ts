@@ -4,6 +4,8 @@
 // Olcsó Haiku; a generateText injektálható a teszthez.
 
 import { generateText, type LanguageModel } from 'ai';
+import { formatHistoryForPrompt } from './history.js';
+import type { ChatMessage } from '@plantbase/shared';
 
 /** Szűk, injektálható generateText (csak amit a HyDE használ). */
 export type GenerateTextFn = (args: {
@@ -28,16 +30,19 @@ export interface HydeDeps {
   readonly generateText?: GenerateTextFn;
 }
 
-export type Hyde = (question: string) => Promise<string>;
+export type Hyde = (
+  question: string,
+  history?: readonly ChatMessage[],
+) => Promise<string>;
 
 /** Létrehozza a HyDE-függvényt. */
 export function createHyde(deps: HydeDeps): Hyde {
   const run = deps.generateText ?? defaultGenerateText;
-  return async (question) => {
+  return async (question, history = []) => {
     const { text } = await run({
       model: deps.model,
       system: HYDE_SYSTEM,
-      prompt: `Kérdés: ${question}`,
+      prompt: `${formatHistoryForPrompt(history)}Kérdés: ${question}`,
     });
     return text.trim();
   };
