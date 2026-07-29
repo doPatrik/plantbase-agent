@@ -17,6 +17,9 @@
     },
     {
       "path": "./packages/shared"
+    },
+    {
+      "path": "./apps/backend"
     }
   ]
 }
