@@ -7,6 +7,7 @@
 
 import {
   noopTrace,
+  type ChatMessage,
   type OnTrace,
   type RagAnswer,
   type SourceRef,
@@ -24,6 +25,7 @@ import { createRerank, type Rerank } from './rerank.js';
 import { checkGrounding, NO_GROUNDING_MESSAGE } from './guardrail.js';
 import { createAnswer, type Answer } from './answer.js';
 import { createCatalogAgent, type CatalogAgent } from './catalog-agent.js';
+import { deriveQuestion } from './history.js';
 
 /** A pipeline injektálható függőségei (teszthez fake, prod-hoz a default wiring). */
 export interface ChatDeps {
@@ -61,12 +63,14 @@ async function drain(stream: AsyncIterable<string>): Promise<string> {
  * tokenjeit adja; a result Promise a teljes szöveggel + forrásokkal resolve-ol.
  */
 export async function runChat(
-  question: string,
+  messages: readonly ChatMessage[],
   deps: ChatDeps,
 ): Promise<ChatRun> {
   const onTrace = deps.onTrace ?? noopTrace;
+  const question = deriveQuestion(messages);
+  const history = messages.slice(0, -1);
 
-  const { route, reasoning } = await deps.router(question);
+  const { route, reasoning } = await deps.router(question, history);
   onTrace({ type: 'router', route, reasoning });
 
   let resolveResult!: (answer: RagAnswer) => void;
@@ -81,7 +85,7 @@ export async function runChat(
   // --- Katalógus-kontextus (both esetén szövegként összegyűjtve) ---
   let catalogContext: string | undefined;
   if (route === 'both') {
-    const catalogRun = deps.catalogAgent(question);
+    const catalogRun = deps.catalogAgent(question, history);
     catalogContext = await drain(catalogRun.textStream);
   }
 
@@ -90,7 +94,7 @@ export async function runChat(
   let answerStream: AsyncIterable<string> | undefined;
 
   if (needsKnowledge) {
-    const hydeDoc = await deps.hyde(question);
+    const hydeDoc = await deps.hyde(question, history);
     onTrace({ type: 'hyde', hydeDoc });
 
     const retrieved = await deps.retrieve(hydeDoc);
@@ -137,12 +141,13 @@ export async function runChat(
       question,
       chunks: grounding.grounded ? reranked.chunks : [],
       catalogContext,
+      history,
     });
     sources = answered.sources;
     answerStream = answered.textStream;
   } else if (needsCatalog) {
     // Tiszta katalógus-út: a catalog-agent streamje megy tovább, nincs forrás.
-    answerStream = deps.catalogAgent(question).textStream;
+    answerStream = deps.catalogAgent(question, history).textStream;
   }
 
   if (!answerStream) {

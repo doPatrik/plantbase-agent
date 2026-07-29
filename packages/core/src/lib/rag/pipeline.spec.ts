@@ -1,6 +1,11 @@
 import { runChat, type ChatDeps } from './pipeline.js';
-import type { TraceEvent } from '@plantbase/shared';
+import type { ChatMessage, TraceEvent } from '@plantbase/shared';
 import type { SearchResult } from '../knowledge-store.js';
+
+/** Egyetlen user-üzenetből álló messages-tömb (a legtöbb tesztnek elég). */
+function userMsg(content: string): ChatMessage[] {
+  return [{ role: 'user', content }];
+}
 
 async function collect(stream: AsyncIterable<string>): Promise<string> {
   let out = '';
@@ -24,11 +29,11 @@ const chunk = (sim: number): SearchResult => ({
 function baseDeps(overrides: Partial<ChatDeps>): ChatDeps {
   const events: TraceEvent[] = [];
   return {
-    router: async () => ({ route: 'knowledge', reasoning: 'r' }),
-    hyde: async () => 'hyde doc',
+    router: async (_q, _hist) => ({ route: 'knowledge', reasoning: 'r' }),
+    hyde: async (_q, _hist) => 'hyde doc',
     retrieve: async () => [chunk(0.6)],
     rerank: async (_q, chunks) => ({ chunks: [...chunks], degraded: false }),
-    answer: () => ({
+    answer: (_input) => ({
       textStream: gen('Válasz'),
       sources: [
         {
@@ -39,7 +44,7 @@ function baseDeps(overrides: Partial<ChatDeps>): ChatDeps {
         },
       ],
     }),
-    catalogAgent: () => ({ textStream: gen('Katalógus') }),
+    catalogAgent: (_q, _hist) => ({ textStream: gen('Katalógus') }),
     groundingThreshold: 0.35,
     topK: 12,
     onTrace: (e) => events.push(e),
@@ -52,7 +57,7 @@ describe('runChat', () => {
   it('knowledge route (grounded): streams the answer and resolves sources', async () => {
     const events: TraceEvent[] = [];
     const run = await runChat(
-      'Hogyan öntözzem a pozsgást?',
+      userMsg('Hogyan öntözzem a pozsgást?'),
       baseDeps({ onTrace: (e) => events.push(e) }),
     );
     expect(await collect(run.textStream)).toBe('Válasz');
@@ -75,7 +80,7 @@ describe('runChat', () => {
   it('knowledge route (not grounded): returns the canned message, no answer call', async () => {
     let answerCalled = false;
     const run = await runChat(
-      'kérdés',
+      userMsg('kérdés'),
       baseDeps({
         retrieve: async () => [chunk(0.1)],
         answer: () => {
@@ -93,7 +98,7 @@ describe('runChat', () => {
   it('catalog route: streams the catalog agent, empty sources, no hyde/retrieval', async () => {
     let hydeCalled = false;
     const run = await runChat(
-      'Mennyi a Kentia?',
+      userMsg('Mennyi a Kentia?'),
       baseDeps({
         router: async () => ({ route: 'catalog', reasoning: 'r' }),
         hyde: async () => {
@@ -112,7 +117,7 @@ describe('runChat', () => {
   it('both route: combines catalog context into the grounded answer', async () => {
     let answerInputCatalog: string | undefined;
     const run = await runChat(
-      'Milyen pozsgást vegyek és hogyan gondozzam?',
+      userMsg('Milyen pozsgást vegyek és hogyan gondozzam?'),
       baseDeps({
         router: async () => ({ route: 'both', reasoning: 'r' }),
         catalogAgent: () => ({ textStream: gen('Kentia: 18900 Ft') }),
@@ -132,7 +137,7 @@ describe('runChat', () => {
     let answerInputChunks: unknown;
     let answerInputCatalog: string | undefined;
     const run = await runChat(
-      'Milyen pozsgást vegyek és hogyan gondozzam?',
+      userMsg('Milyen pozsgást vegyek és hogyan gondozzam?'),
       baseDeps({
         router: async () => ({ route: 'both', reasoning: 'r' }),
         retrieve: async () => [chunk(0.1)], // alacsony similarity → not grounded
@@ -154,5 +159,40 @@ describe('runChat', () => {
     const answer = await run.result;
     expect(answer.route).toBe('both');
     expect(answer.sources).toEqual([]);
+  });
+
+  it('a friss kérdést és a history-t átadja a stage-eknek', async () => {
+    const seen: { routerQ?: string; routerHist?: number; answerHist?: number } =
+      {};
+    const deps = baseDeps({
+      router: async (q, hist) => {
+        seen.routerQ = q;
+        seen.routerHist = hist?.length ?? 0;
+        return { route: 'knowledge', reasoning: 'r' };
+      },
+      answer: (input) => {
+        seen.answerHist = input.history?.length ?? 0;
+        return {
+          textStream: (async function* () {
+            yield 'ok';
+          })(),
+          sources: [],
+        };
+      },
+    });
+    const run = await runChat(
+      [
+        { role: 'user', content: 'Első kérdés' },
+        { role: 'assistant', content: 'Első válasz' },
+        { role: 'user', content: 'Follow-up' },
+      ],
+      deps,
+    );
+    for await (const _ of run.textStream) {
+      /* drain */
+    }
+    expect(seen.routerQ).toBe('Follow-up');
+    expect(seen.routerHist).toBe(2);
+    expect(seen.answerHist).toBe(2);
   });
 });
