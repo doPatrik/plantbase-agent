@@ -54,6 +54,10 @@ pnpm --filter @plantbase/backend exec tsx src/main.ts   # dev-loop tsx-szel
 # Endpointok: POST /api/chat (streaming), GET /api/debug/chunks,
 #             POST /api/debug/search (HyDE ki/be × rerank), GET /api/health
 
+# Frontend (SP4: React + shadcn/ui streaming chat, DEBUG engine-trace panel):
+pnpm nx serve frontend            # Vite dev server (4200), /api proxy → backend (3000)
+#   Fusson a backend is: (DEBUG=true) pnpm nx serve backend
+
 # Tesztek / típusellenőrzés (mindig nx-en át):
 pnpm nx test @plantbase/core
 pnpm nx run-many -t test typecheck build

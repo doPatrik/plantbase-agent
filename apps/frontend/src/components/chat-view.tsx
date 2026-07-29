@@ -1,0 +1,118 @@
+import { useRef, useState, type FormEvent } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { traceEventSchema, type TraceEvent } from '@plantbase/shared';
+import type { PlantbaseUIMessage } from '../lib/ui-message';
+import { toChatMessages } from '../lib/to-chat-messages';
+import { MessageList } from './message-list';
+import { StatusIndicator } from './status-indicator';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+
+const transport = new DefaultChatTransport<PlantbaseUIMessage>({
+  api: '/api/chat',
+  prepareSendMessagesRequest: ({ messages }) => ({
+    body: { messages: toChatMessages(messages) },
+  }),
+});
+
+/** A teljes chat-oldal: input, üzenetlista, élő státusz, hibabanner. */
+export function ChatView() {
+  const [input, setInput] = useState('');
+  const [traces, setTraces] = useState<Record<string, TraceEvent[]>>({});
+  const [liveTrace, setLiveTrace] = useState<TraceEvent[]>([]);
+  const liveTraceRef = useRef<TraceEvent[]>([]);
+
+  const { messages, sendMessage, status, error, setMessages, stop } =
+    useChat<PlantbaseUIMessage>({
+      transport,
+      onData: (dataPart) => {
+        if (dataPart.type === 'data-trace') {
+          const parsed = traceEventSchema.safeParse(dataPart.data);
+          if (parsed.success) {
+            liveTraceRef.current = [...liveTraceRef.current, parsed.data];
+            setLiveTrace(liveTraceRef.current);
+          }
+        }
+      },
+      onFinish: ({ message }) => {
+        const captured = liveTraceRef.current;
+        if (captured.length > 0) {
+          setTraces((prev) => ({ ...prev, [message.id]: captured }));
+        }
+      },
+    });
+
+  const busy = status === 'submitted' || status === 'streaming';
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+    liveTraceRef.current = [];
+    setLiveTrace([]);
+    sendMessage({ text });
+    setInput('');
+  }
+
+  function handleReset() {
+    stop();
+    setMessages([]);
+    setTraces({});
+    liveTraceRef.current = [];
+    setLiveTrace([]);
+  }
+
+  return (
+    <div className="mx-auto flex h-screen max-w-3xl flex-col p-4">
+      <header className="mb-4 flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Plantbase</h1>
+        <Button
+          variant="ghost"
+          size="default"
+          onClick={handleReset}
+          disabled={busy}
+        >
+          Új beszélgetés
+        </Button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto">
+        <MessageList messages={messages} traces={traces} />
+        {busy && (
+          <div className="mt-4">
+            <StatusIndicator trace={liveTrace} />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="mt-2 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {error.message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+          placeholder="Kérdezz a növényekről…"
+          disabled={busy}
+          rows={2}
+        />
+        <Button type="submit" disabled={busy || input.trim() === ''}>
+          Küldés
+        </Button>
+      </form>
+    </div>
+  );
+}
