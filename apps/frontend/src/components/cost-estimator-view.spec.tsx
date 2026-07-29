@@ -68,6 +68,23 @@ describe('CostEstimatorView', () => {
     );
   });
 
+  it('hibaüzenetet mutat, ha a válasz nem felel meg a zod sémának', async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ query: 'kérdés', route: 'catalog' }),
+    })) as unknown as typeof fetch;
+    render(<CostEstimatorView />);
+    fireEvent.change(screen.getByPlaceholderText(/Kérdezz/i), {
+      target: { value: 'kérdés' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Becslés/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Érvénytelen válasz a szervertől.',
+      ),
+    );
+  });
+
   it('hibaüzenetet mutat, ha a hívás elbukik', async () => {
     global.fetch = vi.fn(async () => ({
       ok: false,

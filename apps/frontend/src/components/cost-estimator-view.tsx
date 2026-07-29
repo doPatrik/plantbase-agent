@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   computeStageCost,
+  costEstimateSchema,
   type CostEstimate,
   type ModelPrice,
   type StageUsageDto,
@@ -58,7 +59,11 @@ export function CostEstimatorView() {
       if (!res.ok) {
         throw new Error(body.error ?? 'Hiba történt a becslés közben.');
       }
-      const result = body as CostEstimate;
+      const parsed = costEstimateSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new Error('Érvénytelen válasz a szervertől.');
+      }
+      const result = parsed.data;
       setEstimate(result);
       setPrices(result.defaultPrices);
     } catch (e) {
