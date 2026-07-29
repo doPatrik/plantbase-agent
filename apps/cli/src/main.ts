@@ -62,7 +62,7 @@ async function handleQuestion(
   showPrompt: boolean,
   deps: ChatDeps,
 ): Promise<void> {
-  const run = await runChat(question, deps);
+  const run = await runChat([{ role: 'user', content: question }], deps);
   for await (const part of run.textStream) {
     process.stdout.write(part);
   }
