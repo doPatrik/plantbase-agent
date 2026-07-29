@@ -1,11 +1,24 @@
 import type { UIMessage } from 'ai';
-import type { TraceEvent, ChatRoute, SourceRef } from '@plantbase/shared';
+import { z } from 'zod';
+import {
+  chatRouteSchema,
+  sourceRefSchema,
+  type TraceEvent,
+  type ChatRoute,
+  type SourceRef,
+} from '@plantbase/shared';
 
 /** A backend `data-sources` partjának payloadja. */
 export interface SourcesData {
   readonly route: ChatRoute;
   readonly sources: readonly SourceRef[];
 }
+
+/** Zod-séma a `data-sources` part payloadjának határon való validálásához. */
+export const sourcesDataSchema = z.object({
+  route: chatRouteSchema,
+  sources: z.array(sourceRefSchema),
+});
 
 /**
  * A Plantbase chat UIMessage-típusa. A data partok:

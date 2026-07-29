@@ -1,6 +1,11 @@
 import Markdown from 'react-markdown';
 import type { TraceEvent } from '@plantbase/shared';
-import type { PlantbaseUIMessage, SourcesData } from '../lib/ui-message';
+import {
+  sourcesDataSchema,
+  type PlantbaseUIMessage,
+  type SourcesData,
+} from '../lib/ui-message';
+import { messageText } from '../lib/message-text';
 import { Sources } from './sources';
 import { TracePanel } from './trace-panel';
 
@@ -9,22 +14,17 @@ interface MessageBubbleProps {
   readonly trace?: readonly TraceEvent[];
 }
 
-function textOf(message: PlantbaseUIMessage): string {
-  return message.parts
-    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-    .map((p) => p.text)
-    .join('');
-}
-
 function sourcesOf(message: PlantbaseUIMessage): SourcesData | undefined {
   const part = message.parts.find((p) => p.type === 'data-sources');
-  return part ? (part as { data: SourcesData }).data : undefined;
+  if (!part) return undefined;
+  const parsed = sourcesDataSchema.safeParse((part as { data: unknown }).data);
+  return parsed.success ? parsed.data : undefined;
 }
 
 /** Egy chat-üzenet buborék: user = sima szöveg, assistant = markdown + források + trace. */
 export function MessageBubble({ message, trace }: MessageBubbleProps) {
   const isUser = message.role === 'user';
-  const text = textOf(message);
+  const text = messageText(message);
   const sources = sourcesOf(message);
 
   return (

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import type { TraceEvent } from '@plantbase/shared';
+import { traceEventSchema, type TraceEvent } from '@plantbase/shared';
 import type { PlantbaseUIMessage } from '../lib/ui-message';
 import { toChatMessages } from '../lib/to-chat-messages';
 import { MessageList } from './message-list';
@@ -23,13 +23,16 @@ export function ChatView() {
   const [liveTrace, setLiveTrace] = useState<TraceEvent[]>([]);
   const liveTraceRef = useRef<TraceEvent[]>([]);
 
-  const { messages, sendMessage, status, error, setMessages } =
+  const { messages, sendMessage, status, error, setMessages, stop } =
     useChat<PlantbaseUIMessage>({
       transport,
       onData: (dataPart) => {
         if (dataPart.type === 'data-trace') {
-          liveTraceRef.current = [...liveTraceRef.current, dataPart.data];
-          setLiveTrace(liveTraceRef.current);
+          const parsed = traceEventSchema.safeParse(dataPart.data);
+          if (parsed.success) {
+            liveTraceRef.current = [...liveTraceRef.current, parsed.data];
+            setLiveTrace(liveTraceRef.current);
+          }
         }
       },
       onFinish: ({ message }) => {
@@ -53,6 +56,7 @@ export function ChatView() {
   }
 
   function handleReset() {
+    stop();
     setMessages([]);
     setTraces({});
     liveTraceRef.current = [];
@@ -63,7 +67,12 @@ export function ChatView() {
     <div className="mx-auto flex h-screen max-w-3xl flex-col p-4">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold">Plantbase</h1>
-        <Button variant="ghost" size="default" onClick={handleReset}>
+        <Button
+          variant="ghost"
+          size="default"
+          onClick={handleReset}
+          disabled={busy}
+        >
           Új beszélgetés
         </Button>
       </header>

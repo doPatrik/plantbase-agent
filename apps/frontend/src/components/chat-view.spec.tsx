@@ -9,6 +9,7 @@ interface FakeChat {
   sendMessage: ReturnType<typeof vi.fn>;
   setMessages: ReturnType<typeof vi.fn>;
   regenerate: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
 }
 
 let fake: FakeChat;
@@ -38,6 +39,7 @@ describe('ChatView', () => {
       sendMessage: vi.fn(),
       setMessages: vi.fn(),
       regenerate: vi.fn(),
+      stop: vi.fn(),
     };
     capturedOptions = undefined;
   });
@@ -60,6 +62,14 @@ describe('ChatView', () => {
         /Gondolkodom…|keresése|Reranking|generálása|Útvonal|Hipotetikus|Ellenőrzés/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it('streaming státuszban a reset gomb le van tiltva', () => {
+    fake.status = 'streaming';
+    render(<ChatView />);
+    expect(
+      screen.getByRole('button', { name: /Új beszélgetés/ }),
+    ).toBeDisabled();
   });
 
   it('error státuszban hibabanner jelenik meg', () => {

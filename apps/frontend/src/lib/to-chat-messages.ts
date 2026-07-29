@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@plantbase/shared';
 import type { PlantbaseUIMessage } from './ui-message';
+import { messageText } from './message-text';
 
 /**
  * A useChat `UIMessage[]`-jét a backend `ChatMessage[]` kontraktusára lapítja:
@@ -12,9 +13,6 @@ export function toChatMessages(
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({
       role: m.role as 'user' | 'assistant',
-      content: m.parts
-        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-        .map((p) => p.text)
-        .join(''),
+      content: messageText(m),
     }));
 }
