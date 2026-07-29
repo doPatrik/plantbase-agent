@@ -97,4 +97,36 @@ describe('createAnswer', () => {
     expect(captured).toContain('Mesélj a szanszevériáról');
     expect(captured).toContain('És a fényigénye?');
   });
+
+  it('a streamAnswer usage-ét a modelId-vel StageUsage-ként adja vissza (drain után)', async () => {
+    const streamAnswer: AnswerStreamFn = () => ({
+      textStream: (async function* () {
+        yield 'ok';
+      })(),
+      usage: Promise.resolve({ inputTokens: 500, outputTokens: 40 }),
+    });
+    const answer = createAnswer({
+      model,
+      modelId: 'claude-sonnet-4-6',
+      streamAnswer,
+    });
+    const result = answer({ question: 'q', chunks: [] });
+    expect(await collect(result.textStream)).toBe('ok');
+    expect(await result.usage).toEqual({
+      model: 'claude-sonnet-4-6',
+      inputTokens: 500,
+      outputTokens: 40,
+    });
+  });
+
+  it('usage nélküli streamAnswer esetén a usage undefined', async () => {
+    const streamAnswer: AnswerStreamFn = () => ({
+      textStream: (async function* () {
+        yield 'ok';
+      })(),
+    });
+    const answer = createAnswer({ model, streamAnswer });
+    const result = answer({ question: 'q', chunks: [] });
+    expect(result.usage).toBeUndefined();
+  });
 });
