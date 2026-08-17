@@ -5,6 +5,7 @@
 // onTrace(event) callbackre emittálnak; csak az answer-stage streamel tokent.
 // Minden stage injektálható (teszt), a createDefaultChatDeps a valós wiring.
 
+import { join } from 'node:path';
 import {
   noopTrace,
   type ChatMessage,
@@ -17,6 +18,8 @@ import {
   runSql as defaultRunSql,
   listCategories as defaultListCategories,
 } from '../runsql.js';
+import { createEscalationStore } from '../escalation-store.js';
+import { resolveProjectRoot } from '../paths.js';
 import { createRagModels } from './models.js';
 import { createRouter, type Router } from './router.js';
 import { createHyde, type Hyde } from './hyde.js';
@@ -39,6 +42,10 @@ export interface ChatDeps {
   /** A retrieve stage konfigurált top-K-ja (csak trace-hez, nem a lekéréshez). */
   readonly topK: number;
   readonly onTrace?: OnTrace;
+  readonly onEscalate?: (input: {
+    question: string;
+    maxSimilarity: number;
+  }) => void;
 }
 
 /** A futó chat: a token-stream a fogyasztónak + a végleges válasz Promise-ként. */
@@ -137,7 +144,11 @@ export async function runChat(
 
     if (!grounding.grounded && route === 'knowledge') {
       // Tiszta knowledge-út, nincs elég megbízható forrás → canned üzenet,
-      // NINCS answer-hívás.
+      // NINCS answer-hívás, de EGY eszkalációs jegy nyílik (human handoff).
+      deps.onEscalate?.({
+        question,
+        maxSimilarity: grounding.maxSimilarity,
+      });
       const stream = tee(single(NO_GROUNDING_MESSAGE), onTrace, (full) =>
         resolveResult({ text: full, route, sources: [] }),
       );
@@ -205,6 +216,9 @@ export function createDefaultChatDeps(
   const agentConfig = loadConfig();
   const ragConfig = loadRagConfig();
   const models = createRagModels(ragConfig, agentConfig.apiKey);
+  const escalationStore = createEscalationStore({
+    dir: join(resolveProjectRoot(), 'logs'),
+  });
   return {
     router: createRouter({
       model: models.router,
@@ -229,6 +243,9 @@ export function createDefaultChatDeps(
     }),
     groundingThreshold: ragConfig.groundingThreshold,
     topK: ragConfig.topK,
+    onEscalate: ({ question, maxSimilarity }) => {
+      escalationStore.open({ question, maxSimilarity });
+    },
     ...overrides,
   };
 }

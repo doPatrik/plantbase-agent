@@ -15,7 +15,7 @@ export interface GroundingCheck {
 
 /** A magyar üzenet, ha nincs elég megbízható forrás a tudásbázisban. */
 export const NO_GROUNDING_MESSAGE =
-  'A tudásbázis alapján erre a kérdésre nem tudok megbízhatóan válaszolni. Pontosítanád a kérdést, vagy kérdezz növénygondozási témában.';
+  'A tudásbázis alapján erre a kérdésre nem tudok megbízhatóan válaszolni, ezért továbbítottam egy kollégának — hamarosan válaszolunk. Addig is pontosíthatod a kérdést, vagy kérdezz növénygondozási témában.';
 
 /** Grounded, ha van találat és a legnagyobb similarity eléri a küszöböt. */
 export function checkGrounding(
