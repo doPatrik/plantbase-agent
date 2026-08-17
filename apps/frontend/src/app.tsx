@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ChatView } from './components/chat-view';
 import { CostEstimatorView } from './components/cost-estimator-view';
+import { EscalationQueueView } from './components/escalation-queue-view';
 import { Button } from './components/ui/button';
 
-type Tab = 'chat' | 'cost' | 'customer';
+type Tab = 'chat' | 'cost' | 'customer' | 'support';
 
 /** Tab-shell: Chat | Ügyfélchat | Költség-becslő — nincs router, csak nézet-váltó state. */
 export function App() {
@@ -29,11 +30,18 @@ export function App() {
         >
           Költség-becslő
         </Button>
+        <Button
+          variant={tab === 'support' ? 'default' : 'ghost'}
+          onClick={() => setTab('support')}
+        >
+          Support
+        </Button>
       </nav>
       <div className="flex-1 overflow-hidden">
         {tab === 'chat' && <ChatView />}
         {tab === 'customer' && <ChatView variant="customer" />}
         {tab === 'cost' && <CostEstimatorView />}
+        {tab === 'support' && <EscalationQueueView />}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { App } from './app';
 
@@ -33,6 +33,18 @@ describe('App', () => {
       screen.getByRole('heading', {
         name: /Plantbase — kérdezz a növényedről/i,
       }),
+    ).toBeInTheDocument();
+  });
+
+  it('a Support gombra kattintva átvált az eszkalációs nézetre', () => {
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => [],
+    })) as unknown as typeof fetch;
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^Support$/i }));
+    expect(
+      screen.getByRole('heading', { name: /Support — eszkalációs jegyek/i }),
     ).toBeInTheDocument();
   });
 });
