@@ -34,6 +34,10 @@ _Avoid_: szelet, blokk, részlet
 **Embedding**:
 Egy Chunk (vagy lekérdezés) 1536 dimenziós vektor-reprezentációja (OpenAI `text-embedding-3-small`), amin a koszinusz-hasonlóságú keresés fut.
 
+**Eszkalációs jegy (Escalation ticket)**:
+Egy rekord, ami akkor nyílik, amikor a tudás-út guardrail-je bizonytalan (nincs elég megbízható forrás). A jegy `pending` állapotban vár egy emberi választ; `resolved`-be kerül, amikor egy support-munkatárs jóváhagyja/megírja a végleges választ. Ez az egyetlen emberi jóváhagyási pont az ügyfél felé forduló use case-ben.
+_Avoid_: panasz, ticket (angolul), hibajegy (ez nem szoftverhiba, hanem bizonytalan válasz)
+
 ## Relationships
 
 - A **Katalógus** egy vagy több **Terméket** tartalmaz
