@@ -64,7 +64,7 @@ export function ChatView() {
   }
 
   return (
-    <div className="mx-auto flex h-screen max-w-3xl flex-col p-4">
+    <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold">Plantbase</h1>
         <Button
@@ -77,7 +77,7 @@ export function ChatView() {
         </Button>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <MessageList messages={messages} traces={traces} />
         {busy && (
           <div className="mt-4">
