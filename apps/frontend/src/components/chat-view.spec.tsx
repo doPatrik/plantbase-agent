@@ -104,4 +104,29 @@ describe('ChatView', () => {
     rerender(<ChatView />);
     expect(screen.getByText(/engine trace/)).toBeInTheDocument();
   });
+
+  it('customer variant esetén ügyfél-copy-t mutat', () => {
+    render(<ChatView variant="customer" />);
+    expect(
+      screen.getByRole('heading', {
+        name: /Plantbase — kérdezz a növényedről/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Milyen növényt vegyek/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Új kérdés/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('internal (alapértelmezett) variant a megszokott copy-t mutatja', () => {
+    render(<ChatView />);
+    expect(
+      screen.getByRole('heading', { name: /^Plantbase$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Új beszélgetés/i }),
+    ).toBeInTheDocument();
+  });
 });

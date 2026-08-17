@@ -25,4 +25,14 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Chat$/i }));
     expect(screen.getByPlaceholderText(/Kérdezz/i)).toBeInTheDocument();
   });
+
+  it('az Ügyfélchat gombra kattintva átvált az ügyfél-chatre', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /Ügyfélchat/i }));
+    expect(
+      screen.getByRole('heading', {
+        name: /Plantbase — kérdezz a növényedről/i,
+      }),
+    ).toBeInTheDocument();
+  });
 });
