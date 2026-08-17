@@ -67,6 +67,7 @@ export function ChatView({ variant = 'internal' }: ChatViewProps) {
     });
 
   const busy = status === 'submitted' || status === 'streaming';
+  const showTrace = variant === 'internal';
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -101,10 +102,10 @@ export function ChatView({ variant = 'internal' }: ChatViewProps) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <MessageList messages={messages} traces={traces} />
+        <MessageList messages={messages} traces={showTrace ? traces : {}} />
         {busy && (
           <div className="mt-4">
-            <StatusIndicator trace={liveTrace} />
+            {showTrace && <StatusIndicator trace={liveTrace} />}
           </div>
         )}
       </div>

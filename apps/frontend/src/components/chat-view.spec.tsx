@@ -120,6 +120,42 @@ describe('ChatView', () => {
     ).toBeInTheDocument();
   });
 
+  it('customer variant: streaming közben NEM jelenik meg a StatusIndicator', () => {
+    fake.status = 'streaming';
+    render(<ChatView variant="customer" />);
+    expect(
+      screen.queryByText(
+        /Gondolkodom…|keresése|Reranking|generálása|Útvonal|Hipotetikus|Ellenőrzés/,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('customer variant: onData(data-trace) → onFinish után SEM jelenik meg az engine trace', () => {
+    const { rerender } = render(<ChatView variant="customer" />);
+    act(() => {
+      capturedOptions.onData({
+        type: 'data-trace',
+        data: { type: 'router', route: 'knowledge', reasoning: 'r' },
+      });
+      capturedOptions.onFinish({
+        message: {
+          id: 'asszisztens-1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'Válasz' }],
+        },
+      });
+    });
+    fake.messages = [
+      {
+        id: 'asszisztens-1',
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Válasz' }],
+      },
+    ] as PlantbaseUIMessage[];
+    rerender(<ChatView variant="customer" />);
+    expect(screen.queryByText(/engine trace/)).not.toBeInTheDocument();
+  });
+
   it('internal (alapértelmezett) variant a megszokott copy-t mutatja', () => {
     render(<ChatView />);
     expect(
