@@ -16,7 +16,12 @@ import {
   type CostEstimate,
   type EscalationTicket,
 } from '@plantbase/shared';
-import type { ChatRun, ChunkStats } from '@plantbase/core';
+import {
+  EscalationNotFoundError,
+  EscalationAlreadyResolvedError,
+  type ChatRun,
+  type ChunkStats,
+} from '@plantbase/core';
 
 export interface HealthReport {
   readonly status: 'ok' | 'degraded';
@@ -169,7 +174,15 @@ function registerEscalations(app: Express, deps: BackendDeps): void {
         );
         res.json(ticket);
       } catch (error) {
-        res.status(404).json({
+        if (error instanceof EscalationNotFoundError) {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+        if (error instanceof EscalationAlreadyResolvedError) {
+          res.status(409).json({ error: error.message });
+          return;
+        }
+        res.status(500).json({
           error: error instanceof Error ? error.message : String(error),
         });
       }

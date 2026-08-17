@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import type { ChatRun } from '@plantbase/core';
+import {
+  EscalationNotFoundError,
+  EscalationAlreadyResolvedError,
+  type ChatRun,
+} from '@plantbase/core';
 import type { RagAnswer, EscalationTicket } from '@plantbase/shared';
 import { createApp, type BackendDeps } from './app.js';
 
@@ -290,11 +294,13 @@ describe('POST /api/escalations/:id/resolve', () => {
     expect(res.status).toBe(400);
   });
 
-  it('404-et ad, ha a deps hibát dob (pl. ismeretlen id)', async () => {
+  it('404-et ad, ha a deps EscalationNotFoundError-t dob (ismeretlen id)', async () => {
     const app = createApp(
       makeDeps({
         resolveEscalation: async () => {
-          throw new Error('Nincs ilyen eszkalációs jegy: nincs-ilyen');
+          throw new EscalationNotFoundError(
+            'Nincs ilyen eszkalációs jegy: nincs-ilyen',
+          );
         },
       }),
     );
@@ -302,5 +308,35 @@ describe('POST /api/escalations/:id/resolve', () => {
       .post('/api/escalations/nincs-ilyen/resolve')
       .send({ reply: 'válasz' });
     expect(res.status).toBe(404);
+  });
+
+  it('409-et ad, ha a deps EscalationAlreadyResolvedError-t dob (már lezárt jegy)', async () => {
+    const app = createApp(
+      makeDeps({
+        resolveEscalation: async () => {
+          throw new EscalationAlreadyResolvedError(
+            'A jegy már le van zárva: t1',
+          );
+        },
+      }),
+    );
+    const res = await request(app)
+      .post('/api/escalations/t1/resolve')
+      .send({ reply: 'válasz' });
+    expect(res.status).toBe(409);
+  });
+
+  it('500-at ad, ha a deps váratlan hibát dob', async () => {
+    const app = createApp(
+      makeDeps({
+        resolveEscalation: async () => {
+          throw new Error('Váratlan adatbázis-hiba');
+        },
+      }),
+    );
+    const res = await request(app)
+      .post('/api/escalations/t1/resolve')
+      .send({ reply: 'válasz' });
+    expect(res.status).toBe(500);
   });
 });
