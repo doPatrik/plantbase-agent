@@ -16,8 +16,31 @@ const transport = new DefaultChatTransport<PlantbaseUIMessage>({
   }),
 });
 
+type ChatViewVariant = 'internal' | 'customer';
+
+interface ChatViewProps {
+  readonly variant?: ChatViewVariant;
+}
+
+const COPY: Record<
+  ChatViewVariant,
+  { title: string; placeholder: string; reset: string }
+> = {
+  internal: {
+    title: 'Plantbase',
+    placeholder: 'Kérdezz a növényekről…',
+    reset: 'Új beszélgetés',
+  },
+  customer: {
+    title: 'Plantbase — kérdezz a növényedről',
+    placeholder: 'Pl. Milyen növényt vegyek egy sötét nappaliba?',
+    reset: 'Új kérdés',
+  },
+};
+
 /** A teljes chat-oldal: input, üzenetlista, élő státusz, hibabanner. */
-export function ChatView() {
+export function ChatView({ variant = 'internal' }: ChatViewProps) {
+  const copy = COPY[variant];
   const [input, setInput] = useState('');
   const [traces, setTraces] = useState<Record<string, TraceEvent[]>>({});
   const [liveTrace, setLiveTrace] = useState<TraceEvent[]>([]);
@@ -44,6 +67,7 @@ export function ChatView() {
     });
 
   const busy = status === 'submitted' || status === 'streaming';
+  const showTrace = variant === 'internal';
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -66,22 +90,22 @@ export function ChatView() {
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
       <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Plantbase</h1>
+        <h1 className="text-lg font-semibold">{copy.title}</h1>
         <Button
           variant="ghost"
           size="default"
           onClick={handleReset}
           disabled={busy}
         >
-          Új beszélgetés
+          {copy.reset}
         </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <MessageList messages={messages} traces={traces} />
+        <MessageList messages={messages} traces={showTrace ? traces : {}} />
         {busy && (
           <div className="mt-4">
-            <StatusIndicator trace={liveTrace} />
+            {showTrace && <StatusIndicator trace={liveTrace} />}
           </div>
         )}
       </div>
@@ -105,7 +129,7 @@ export function ChatView() {
               handleSubmit(e);
             }
           }}
-          placeholder="Kérdezz a növényekről…"
+          placeholder={copy.placeholder}
           disabled={busy}
           rows={2}
         />

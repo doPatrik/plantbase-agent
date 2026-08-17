@@ -95,6 +95,31 @@ describe('runChat', () => {
     expect((await run.result).sources).toEqual([]);
   });
 
+  it('knowledge route (not grounded): eszkalációs jegyet nyit a kérdéssel és a similarity-vel', async () => {
+    const escalated: { question: string; maxSimilarity: number }[] = [];
+    const run = await runChat(
+      userMsg('Milyen növény való a fürdőszobámba?'),
+      baseDeps({
+        retrieve: async () => [chunk(0.1)],
+        onEscalate: (input) => escalated.push(input),
+      }),
+    );
+    await collect(run.textStream);
+    expect(escalated).toEqual([
+      { question: 'Milyen növény való a fürdőszobámba?', maxSimilarity: 0.1 },
+    ]);
+  });
+
+  it('knowledge route (grounded): NEM nyit eszkalációs jegyet', async () => {
+    const escalated: unknown[] = [];
+    const run = await runChat(
+      userMsg('Hogyan öntözzem a pozsgást?'),
+      baseDeps({ onEscalate: (input) => escalated.push(input) }),
+    );
+    await collect(run.textStream);
+    expect(escalated).toEqual([]);
+  });
+
   it('catalog route: streams the catalog agent, empty sources, no hyde/retrieval', async () => {
     let hydeCalled = false;
     const run = await runChat(

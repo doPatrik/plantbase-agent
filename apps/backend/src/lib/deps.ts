@@ -8,6 +8,7 @@ import {
   createDefaultRetrievalDebugDeps,
   runCostEstimate,
   createDefaultCostEstimateDeps,
+  createDefaultEscalationStore,
   loadModelPrices,
   getChunkStats,
   loadRagConfig,
@@ -31,6 +32,7 @@ async function computeHealth(): Promise<HealthReport> {
 /** A valós backend-függőségek (motor + knowledge-store + health). */
 export function createBackendDeps(): BackendDeps {
   const ragConfig = loadRagConfig();
+  const escalationStore = createDefaultEscalationStore();
   return {
     chat: (messages, onTrace) =>
       runChat(messages, createDefaultChatDeps({ onTrace })),
@@ -56,6 +58,8 @@ export function createBackendDeps(): BackendDeps {
       };
     },
     chunkStats: () => getChunkStats(),
+    listEscalations: async () => escalationStore.list(),
+    resolveEscalation: async (id, reply) => escalationStore.resolve(id, reply),
     health: computeHealth,
     debug: ragConfig.debug,
   };
