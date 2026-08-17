@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import type { ChatRun } from '@plantbase/core';
-import type { RagAnswer } from '@plantbase/shared';
+import type { RagAnswer, EscalationTicket } from '@plantbase/shared';
 import { createApp, type BackendDeps } from './app.js';
 
 function fakeChatRun(text: string, answer: RagAnswer): ChatRun {
@@ -43,6 +43,12 @@ function makeDeps(over: Partial<BackendDeps> = {}): BackendDeps {
       status: 'ok',
       checks: { database: true, anthropicKey: true, openaiKey: true },
     }),
+    listEscalations: async () => {
+      throw new Error('nem hívandó');
+    },
+    resolveEscalation: async () => {
+      throw new Error('nem hívandó');
+    },
     debug: false,
     ...over,
   };
@@ -227,5 +233,74 @@ describe('POST /api/debug/cost', () => {
     );
     const res = await request(app).post('/api/debug/cost').send({ query: 'x' });
     expect(res.status).toBe(503);
+  });
+});
+
+const pendingTicket: EscalationTicket = {
+  id: 't1',
+  createdAt: '2026-08-17T10:00:00.000Z',
+  question: 'Milyen növény való a fürdőszobámba?',
+  maxSimilarity: 0.21,
+  reason: 'low_grounding',
+  status: 'pending',
+  reply: null,
+  resolvedAt: null,
+};
+
+describe('GET /api/escalations', () => {
+  it('visszaadja a jegyek listáját', async () => {
+    const app = createApp(
+      makeDeps({ listEscalations: async () => [pendingTicket] }),
+    );
+    const res = await request(app).get('/api/escalations');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([pendingTicket]);
+  });
+});
+
+describe('POST /api/escalations/:id/resolve', () => {
+  it('lezárja a jegyet és visszaadja a resolved jegyet', async () => {
+    const resolved: EscalationTicket = {
+      ...pendingTicket,
+      status: 'resolved',
+      reply: 'Kollégánk hamarosan válaszol.',
+      resolvedAt: '2026-08-17T10:05:00.000Z',
+    };
+    const app = createApp(
+      makeDeps({
+        resolveEscalation: async (id, reply) => {
+          expect(id).toBe('t1');
+          expect(reply).toBe('Kollégánk hamarosan válaszol.');
+          return resolved;
+        },
+      }),
+    );
+    const res = await request(app)
+      .post('/api/escalations/t1/resolve')
+      .send({ reply: 'Kollégánk hamarosan válaszol.' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(resolved);
+  });
+
+  it('400-at ad üres reply esetén', async () => {
+    const app = createApp(makeDeps());
+    const res = await request(app)
+      .post('/api/escalations/t1/resolve')
+      .send({ reply: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('404-et ad, ha a deps hibát dob (pl. ismeretlen id)', async () => {
+    const app = createApp(
+      makeDeps({
+        resolveEscalation: async () => {
+          throw new Error('Nincs ilyen eszkalációs jegy: nincs-ilyen');
+        },
+      }),
+    );
+    const res = await request(app)
+      .post('/api/escalations/nincs-ilyen/resolve')
+      .send({ reply: 'válasz' });
+    expect(res.status).toBe(404);
   });
 });

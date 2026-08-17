@@ -9,10 +9,12 @@ import {
   chatRequestSchema,
   retrievalDebugRequestSchema,
   costEstimateRequestSchema,
+  escalationResolveRequestSchema,
   type ChatMessage,
   type OnTrace,
   type RetrievalDebugResult,
   type CostEstimate,
+  type EscalationTicket,
 } from '@plantbase/shared';
 import type { ChatRun, ChunkStats } from '@plantbase/core';
 
@@ -37,6 +39,11 @@ export interface BackendDeps {
   readonly costEstimate: (query: string) => Promise<CostEstimate>;
   readonly chunkStats: () => Promise<ChunkStats>;
   readonly health: () => Promise<HealthReport>;
+  readonly listEscalations: () => Promise<readonly EscalationTicket[]>;
+  readonly resolveEscalation: (
+    id: string,
+    reply: string,
+  ) => Promise<EscalationTicket>;
   readonly debug: boolean;
 }
 
@@ -140,6 +147,36 @@ function registerCost(app: Express, deps: BackendDeps): void {
   });
 }
 
+function registerEscalations(app: Express, deps: BackendDeps): void {
+  app.get('/api/escalations', async (_req: Request, res: Response) => {
+    res.json(await deps.listEscalations());
+  });
+
+  app.post(
+    '/api/escalations/:id/resolve',
+    async (req: Request, res: Response) => {
+      const parsed = escalationResolveRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res
+          .status(400)
+          .json({ error: parsed.error.issues[0]?.message ?? 'Hibás kérés.' });
+        return;
+      }
+      try {
+        const ticket = await deps.resolveEscalation(
+          String(req.params.id),
+          parsed.data.reply,
+        );
+        res.json(ticket);
+      } catch (error) {
+        res.status(404).json({
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+  );
+}
+
 function registerHealth(app: Express, deps: BackendDeps): void {
   app.get('/api/health', async (_req: Request, res: Response) => {
     const report = await deps.health();
@@ -154,6 +191,7 @@ export function createApp(deps: BackendDeps): Express {
   registerChat(app, deps);
   registerDebug(app, deps);
   registerCost(app, deps);
+  registerEscalations(app, deps);
   registerHealth(app, deps);
   return app;
 }
