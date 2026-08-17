@@ -5,7 +5,6 @@
 // onTrace(event) callbackre emittálnak; csak az answer-stage streamel tokent.
 // Minden stage injektálható (teszt), a createDefaultChatDeps a valós wiring.
 
-import { join } from 'node:path';
 import {
   noopTrace,
   type ChatMessage,
@@ -18,8 +17,7 @@ import {
   runSql as defaultRunSql,
   listCategories as defaultListCategories,
 } from '../runsql.js';
-import { createEscalationStore } from '../escalation-store.js';
-import { resolveProjectRoot } from '../paths.js';
+import { createDefaultEscalationStore } from '../escalation-store.js';
 import { createRagModels } from './models.js';
 import { createRouter, type Router } from './router.js';
 import { createHyde, type Hyde } from './hyde.js';
@@ -216,9 +214,7 @@ export function createDefaultChatDeps(
   const agentConfig = loadConfig();
   const ragConfig = loadRagConfig();
   const models = createRagModels(ragConfig, agentConfig.apiKey);
-  const escalationStore = createEscalationStore({
-    dir: join(resolveProjectRoot(), 'logs'),
-  });
+  const escalationStore = createDefaultEscalationStore();
   return {
     router: createRouter({
       model: models.router,

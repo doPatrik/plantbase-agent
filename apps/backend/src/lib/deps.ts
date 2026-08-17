@@ -1,7 +1,6 @@
 // A backend valós függőség-wiringje (SP3b): a core motort és a knowledge-store-t
 // köti a createApp DI-felületéhez. A trace-t a /api/chat route adja onTrace-ként.
 
-import { join } from 'node:path';
 import {
   runChat,
   createDefaultChatDeps,
@@ -9,11 +8,10 @@ import {
   createDefaultRetrievalDebugDeps,
   runCostEstimate,
   createDefaultCostEstimateDeps,
-  createEscalationStore,
+  createDefaultEscalationStore,
   loadModelPrices,
   getChunkStats,
   loadRagConfig,
-  resolveProjectRoot,
 } from '@plantbase/core';
 import type { BackendDeps, HealthReport } from './app.js';
 
@@ -34,9 +32,7 @@ async function computeHealth(): Promise<HealthReport> {
 /** A valós backend-függőségek (motor + knowledge-store + health). */
 export function createBackendDeps(): BackendDeps {
   const ragConfig = loadRagConfig();
-  const escalationStore = createEscalationStore({
-    dir: join(resolveProjectRoot(), 'logs'),
-  });
+  const escalationStore = createDefaultEscalationStore();
   return {
     chat: (messages, onTrace) =>
       runChat(messages, createDefaultChatDeps({ onTrace })),

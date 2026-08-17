@@ -1,7 +1,13 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createEscalationStore } from './escalation-store.js';
+import {
+  createEscalationStore,
+  createDefaultEscalationStore,
+  EscalationNotFoundError,
+  EscalationAlreadyResolvedError,
+} from './escalation-store.js';
+import { resolveProjectRoot } from './paths.js';
 
 describe('createEscalationStore', () => {
   const dir = join(tmpdir(), 'plantbase-escalation-store-test');
@@ -60,14 +66,18 @@ describe('createEscalationStore', () => {
 
   it('resolve(): ismeretlen id-ra hibát dob', () => {
     const store = createEscalationStore({ dir, filename: 'esc.jsonl' });
-    expect(() => store.resolve('nincs-ilyen', 'válasz')).toThrow();
+    expect(() => store.resolve('nincs-ilyen', 'válasz')).toThrow(
+      EscalationNotFoundError,
+    );
   });
 
   it('resolve(): már lezárt jegyre hibát dob', () => {
     const store = createEscalationStore({ dir, filename: 'esc.jsonl' });
     const opened = store.open({ question: 'Kérdés', maxSimilarity: 0.1 });
     store.resolve(opened.id, 'Első válasz');
-    expect(() => store.resolve(opened.id, 'Második válasz')).toThrow();
+    expect(() => store.resolve(opened.id, 'Második válasz')).toThrow(
+      EscalationAlreadyResolvedError,
+    );
   });
 
   it('list(): egy másik store-példány (ugyanaz a fájl) is látja a változást', () => {
@@ -83,5 +93,17 @@ describe('createEscalationStore', () => {
   it('list(): üres/nemlétező fájl esetén üres tömböt ad', () => {
     const store = createEscalationStore({ dir, filename: 'nincs-ilyen.jsonl' });
     expect(store.list()).toEqual([]);
+  });
+});
+
+describe('createDefaultEscalationStore', () => {
+  it('a <gyökér>/logs/escalations.jsonl fájlra mutat', () => {
+    const store = createDefaultEscalationStore();
+    const expectedSuffix = join(
+      resolveProjectRoot(),
+      'logs',
+      'escalations.jsonl',
+    );
+    expect(store.filePath).toBe(expectedSuffix);
   });
 });

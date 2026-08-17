@@ -9,6 +9,13 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type { EscalationTicket } from '@plantbase/shared';
+import { resolveProjectRoot } from './paths.js';
+
+/** Ismeretlen id-ra hivatkozó resolve() hívás esetén dobott hiba. */
+export class EscalationNotFoundError extends Error {}
+
+/** Már lezárt jegyre hivatkozó resolve() hívás esetén dobott hiba. */
+export class EscalationAlreadyResolvedError extends Error {}
 
 interface OpenedEvent {
   readonly type: 'opened';
@@ -124,10 +131,14 @@ export function createEscalationStore(
     resolve(id: string, reply: string): EscalationTicket {
       const current = foldEvents(readEvents(filePath)).find((t) => t.id === id);
       if (!current) {
-        throw new Error(`Nincs ilyen eszkalációs jegy: ${id}`);
+        throw new EscalationNotFoundError(
+          `Nincs ilyen eszkalációs jegy: ${id}`,
+        );
       }
       if (current.status === 'resolved') {
-        throw new Error(`A jegy már le van zárva: ${id}`);
+        throw new EscalationAlreadyResolvedError(
+          `A jegy már le van zárva: ${id}`,
+        );
       }
       const event: ResolvedEvent = {
         type: 'resolved',
@@ -147,4 +158,14 @@ export function createEscalationStore(
       return foldEvents(readEvents(filePath));
     },
   };
+}
+
+/**
+ * A prod-wiring közös belépője: mind a pipeline (createDefaultChatDeps), mind
+ * a backend (createBackendDeps) ezt hívja, hogy a jegyek ugyanabba a
+ * `<gyökér>/logs/escalations.jsonl`-be írjanak/olvassanak — egy forrás,
+ * nem két, egymástól függetlenül karbantartott inline konstrukció.
+ */
+export function createDefaultEscalationStore(): EscalationStore {
+  return createEscalationStore({ dir: join(resolveProjectRoot(), 'logs') });
 }
