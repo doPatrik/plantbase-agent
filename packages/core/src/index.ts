@@ -3,6 +3,7 @@ export * from './lib/config.js';
 export * from './lib/schema-context.js';
 export * from './lib/runsql.js';
 export * from './lib/logger.js';
+export * from './lib/escalation-store.js';
 export * from './lib/embedding.js';
 export * from './lib/knowledge-store.js';
 export * from './lib/rag/models.js';
