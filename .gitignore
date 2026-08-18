@@ -62,7 +62,5 @@ logs/
 packages/db/generated/
 # superpowers brainstorming specek/tervek — munkaanyag, nem PR-tartalom
 docs/superpowers/
-# HF5 business-case tervezet — a felhasználó saját verziót ír, ez csak vázlat
-docs/business-case/
 vite.config.*.timestamp*
 vitest.config.*.timestamp*

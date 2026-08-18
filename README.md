@@ -306,6 +306,7 @@ A `.env.example`-ből másold `.env`-be. Fő változók (a teljes lista a fájlb
 - [`docs/konvenciok.md`](docs/konvenciok.md) — konvenciók
 - [`docs/dev-workflow.md`](docs/dev-workflow.md) — fejlesztői munkafolyamat
 - [`docs/adr/`](docs/adr/) — architektúra-döntések (ADR-ek)
+- [`docs/business-case/README.md`](docs/business-case/README.md) — ügyfélirányú use case: business case, mérési terv, kérdéslap
 
 ## Licenc
 
