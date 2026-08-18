@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plantbase — Ügyfélirányú AI-asszisztens</title>
+<style>
+  :root{
+    --bg: #0a0f0d;
+    --bg-2: #0f1712;
+    --panel: #121b16;
+    --panel-2: #17221b;
+    --border: rgba(255,255,255,0.09);
+    --text: #eef3ef;
+    --text-dim: #a9b8ae;
+    --text-faint: #7c8b81;
+    --accent: #34d399;
+    --accent-2: #6ee7b7;
+    --accent-soft: rgba(52,211,153,0.12);
+    --amber: #f5b95c;
+    --amber-soft: rgba(245,185,92,0.12);
+    --red: #f5716c;
+    --red-soft: rgba(245,113,108,0.12);
+    --blue: #7dd3fc;
+    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+    --radius: 18px;
+    --serif: "Iowan Old Style","Palatino Linotype","Georgia",serif;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    --mono: "SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+  }
+  :root[data-theme="light"]{
+    --bg: #f4f7f4;
+    --bg-2: #eef3ee;
+    --panel: #ffffff;
+    --panel-2: #f4f8f5;
+    --border: rgba(15,30,20,0.10);
+    --text: #12201a;
+    --text-dim: #465850;
+    --text-faint: #7c8b81;
+    --accent: #0f9d69;
+    --accent-2: #0b7a52;
+    --accent-soft: rgba(15,157,105,0.10);
+    --amber-soft: rgba(196,132,15,0.12);
+    --amber: #9a6b0d;
+    --red-soft: rgba(200,60,55,0.10);
+    --red: #b23b35;
+    --blue: #1476ad;
+    --shadow: 0 20px 50px rgba(20,40,30,0.12);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg: #f4f7f4; --bg-2:#eef3ee; --panel:#ffffff; --panel-2:#f4f8f5;
+      --border: rgba(15,30,20,0.10); --text:#12201a; --text-dim:#465850; --text-faint:#7c8b81;
+      --accent:#0f9d69; --accent-2:#0b7a52; --accent-soft:rgba(15,157,105,0.10);
+      --amber-soft: rgba(196,132,15,0.12); --amber:#9a6b0d;
+      --red-soft: rgba(200,60,55,0.10); --red:#b23b35; --blue:#1476ad;
+      --shadow: 0 20px 50px rgba(20,40,30,0.12);
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 700px at 85% -10%, var(--accent-soft), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, var(--accent-soft), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{
+    position:relative;
+    height:100dvh;
+    width:100vw;
+    overflow:hidden;
+  }
+  .track{
+    height:100%;
+    width:100%;
+    display:flex;
+    transition: transform 620ms cubic-bezier(.65,0,.2,1);
+    will-change:transform;
+  }
+  .slide{
+    flex:0 0 100vw;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: clamp(20px,5vw,72px);
+    overflow-y:auto;
+  }
+  .slide-inner{
+    width:100%;
+    max-width:1180px;
+    margin:auto;
+  }
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent-2);
+    font-weight:700;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:7px;height:7px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-soft);
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:clamp(30px,4.6vw,58px);
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    margin:0 0 18px;
+  }
+  h1 em{
+    font-style:normal;
+    color:var(--accent);
+  }
+  h2{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:clamp(24px,3.2vw,38px);
+    line-height:1.15;
+    margin:0 0 22px;
+    letter-spacing:-0.01em;
+  }
+  .lede{
+    font-size:clamp(15px,1.6vw,19px);
+    line-height:1.6;
+    color:var(--text-dim);
+    max-width:62ch;
+    margin:0 0 8px;
+  }
+  .cover .lede{max-width:56ch;}
+  p{margin:0 0 12px;}
+  .cover{
+    text-align:left;
+  }
+  .cover-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:34px;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    font-size:13px;
+    color:var(--text-dim);
+  }
+  .pill b{color:var(--text);font-weight:600;}
+  .leaf{
+    position:absolute;
+    font-size:120px;
+    opacity:.06;
+    right:-10px;
+    top:-30px;
+    transform:rotate(12deg);
+    pointer-events:none;
+    filter: blur(0.3px);
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: clamp(16px,3vw,36px);
+    align-items:start;
+  }
+  @media (max-width: 860px){ .grid2{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:clamp(16px,2.2vw,26px);
+    box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 10px;font-size:15px;font-weight:700;letter-spacing:.01em;}
+  .card p{color:var(--text-dim);font-size:14.5px;line-height:1.55;margin:0;}
+  .stack{display:flex;flex-direction:column;gap:14px;}
+
+  .pain-row{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .pain{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    padding:14px 16px;
+    border-radius:14px;
+    background:var(--panel);
+    border:1px solid var(--border);
+  }
+  .pain .num{
+    flex:0 0 auto;
+    width:30px;height:30px;border-radius:9px;
+    background:var(--accent-soft);color:var(--accent-2);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;
+  }
+  .pain .txt b{display:block;font-size:14.5px;margin-bottom:2px;}
+  .pain .txt span{color:var(--text-dim);font-size:13.5px;line-height:1.45;}
+
+  .callout{
+    border-radius:16px;
+    padding:16px 18px;
+    border:1px solid;
+    font-size:14px;
+    line-height:1.55;
+  }
+  .callout.warn{
+    background:var(--amber-soft);
+    border-color:rgba(245,185,92,0.35);
+    color:var(--text);
+  }
+  .callout.warn b{color:var(--amber);}
+  .callout.danger{
+    background:var(--red-soft);
+    border-color:rgba(245,113,108,0.35);
+  }
+  .callout.danger b{color:var(--red);}
+  .callout.ok{
+    background:var(--accent-soft);
+    border-color:rgba(52,211,153,0.35);
+  }
+  .callout.ok b{color:var(--accent-2);}
+
+  /* data map flow */
+  .flow{
+    display:flex;
+    align-items:stretch;
+    gap:10px;
+    margin: 26px 0 18px;
+  }
+  .flow-node{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+  }
+  .flow-node .ico{font-size:22px;}
+  .flow-node b{font-size:13.5px;}
+  .flow-node span{font-size:12px;color:var(--text-faint);line-height:1.4;}
+  .flow-arrow{
+    flex:0 0 auto;
+    align-self:center;
+    color:var(--text-faint);
+    font-size:20px;
+  }
+  .flow-branches{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin: 4px 0 18px;
+  }
+  @media (max-width: 980px){
+    .flow-branches{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width: 860px){
+    .flow{flex-direction:column;}
+    .flow-arrow{transform:rotate(90deg);}
+  }
+  @media (max-width: 560px){
+    .flow-branches{grid-template-columns:1fr;}
+  }
+  .branch{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+  }
+  .branch .tag{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:3px 8px;
+    border-radius:6px;
+    margin-bottom:8px;
+  }
+  .branch.external .tag{background:var(--amber-soft);color:var(--amber);}
+  .branch.internal .tag{background:var(--accent-soft);color:var(--accent-2);}
+  .branch b{display:block;font-size:13.5px;margin-bottom:4px;}
+  .branch p{font-size:12.5px;color:var(--text-dim);margin:0;line-height:1.5;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  thead th{
+    text-align:left;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    background:var(--panel-2);
+    padding:10px 14px;
+    font-weight:700;
+    border-bottom:1px solid var(--border);
+  }
+  tbody td{
+    padding:11px 14px;
+    border-bottom:1px solid var(--border);
+    color:var(--text-dim);
+    vertical-align:top;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td:first-child{color:var(--text);font-weight:600;}
+  .table-wrap{overflow-x:auto;border-radius:14px;}
+  .table-wrap table{min-width:640px;}
+
+  .metric-row{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+    margin-bottom:20px;
+  }
+  @media (max-width:700px){.metric-row{grid-template-columns:1fr;}}
+  .metric{
+    background:linear-gradient(160deg, var(--panel), var(--panel-2));
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px;
+  }
+  .metric .label{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+  .metric .value{font-family:var(--serif);font-size:26px;color:var(--accent-2);}
+  .metric .sub{font-size:12.5px;color:var(--text-dim);margin-top:4px;}
+
+  .bignum{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .bignum .n{
+    font-family:var(--serif);
+    font-size:clamp(46px,7vw,84px);
+    color:var(--accent-2);
+    line-height:1;
+    letter-spacing:-0.02em;
+  }
+  .bignum .u{font-size:16px;color:var(--text-dim);}
+  .tagset{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0;}
+  .tag-chip{
+    font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;
+  }
+  .tag-chip.mert{background:var(--accent-soft);color:var(--accent-2);}
+  .tag-chip.becsult{background:var(--amber-soft);color:var(--amber);}
+  .tag-chip.atalany{background:rgba(125,211,252,.14);color:var(--blue);}
+
+  .formula{
+    font-family:var(--mono);
+    font-size:13px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 16px;
+    color:var(--text-dim);
+    line-height:1.7;
+    margin-top:14px;
+    overflow-x:auto;
+    white-space:nowrap;
+  }
+  .formula .hl{color:var(--accent-2);font-weight:700;}
+
+  /* timeline */
+  .timeline{
+    display:flex;
+    gap:0;
+    margin: 30px 0 10px;
+    position:relative;
+  }
+  @media (max-width: 780px){ .timeline{flex-direction:column;} }
+  .tl-step{
+    flex:1;
+    position:relative;
+    padding: 0 18px 0 0;
+  }
+  .tl-step .dot{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 6px var(--accent-soft);
+    margin-bottom:16px;
+  }
+  .tl-step.pending .dot{background:var(--text-faint);box-shadow:0 0 0 6px var(--panel-2);}
+  .tl-step .line{
+    position:absolute;
+    top:7px;left:16px;right:-4px;
+    height:2px;
+    background:linear-gradient(90deg,var(--accent),var(--border));
+  }
+  .tl-step:last-child .line{display:none;}
+  @media (max-width: 780px){
+    .tl-step{padding:0 0 24px 28px;}
+    .tl-step .dot{position:absolute;left:0;top:2px;margin:0;}
+    .tl-step .line{top:18px;left:7px;right:auto;bottom:-2px;width:2px;height:auto;background:linear-gradient(180deg,var(--accent),var(--border));}
+  }
+  .tl-step .when{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent-2);font-weight:800;margin-bottom:6px;}
+  .tl-step h4{margin:0 0 6px;font-size:15.5px;}
+  .tl-step p{font-size:13px;color:var(--text-dim);margin:0;line-height:1.5;}
+
+  .risk-list{display:flex;flex-direction:column;gap:10px;}
+  .risk{
+    display:flex;
+    gap:12px;
+    padding:13px 15px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:13px;
+    align-items:flex-start;
+  }
+  .risk .ico{font-size:17px;line-height:1.4;}
+  .risk b{font-size:13.5px;}
+  .risk span{display:block;color:var(--text-dim);font-size:13px;line-height:1.5;margin-top:2px;}
+
+  .ask-box{
+    background:linear-gradient(160deg, var(--accent-soft), transparent);
+    border:1px solid rgba(52,211,153,0.35);
+    border-radius:18px;
+    padding:22px;
+  }
+  .ask-box .lede{color:var(--text);max-width:none;}
+
+  /* chrome: nav */
+  .chrome{
+    position:fixed;
+    inset:auto 0 0 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    padding:14px 0 20px;
+    z-index:20;
+    pointer-events:none;
+  }
+  .chrome > *{pointer-events:auto;}
+  .navbtn{
+    width:42px;height:42px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:17px;
+    box-shadow:var(--shadow);
+    transition:transform .15s ease, background .15s ease;
+  }
+  .navbtn:hover{transform:translateY(-2px);background:var(--panel-2);}
+  .navbtn:disabled{opacity:.3;cursor:default;transform:none;}
+  .dots{display:flex;gap:7px;align-items:center;padding:0 6px;}
+  .dot-btn{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--border);
+    border:none;
+    cursor:pointer;
+    padding:0;
+    transition:all .2s ease;
+  }
+  .dot-btn.active{width:22px;border-radius:5px;background:var(--accent);}
+
+  .topbar{
+    position:fixed;
+    top:0;left:0;right:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: 16px clamp(16px,4vw,40px) 0;
+    z-index:20;
+    pointer-events:none;
+    font-size:12px;
+    color:var(--text-faint);
+    letter-spacing:.04em;
+  }
+  .topbar span{pointer-events:auto;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--text-dim);}
+  .brand .dotlogo{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .progress{
+    position:fixed;top:0;left:0;height:3px;
+    background:var(--accent);
+    z-index:21;
+    transition:width .5s cubic-bezier(.65,0,.2,1);
+  }
+  .themebtn{
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text-dim);
+    border-radius:8px;
+    padding:5px 9px;
+    font-size:11px;
+    cursor:pointer;
+  }
+
+  footer.credit{
+    margin-top:30px;
+    font-size:11.5px;
+    color:var(--text-faint);
+  }
+
+  @media (max-width: 560px){
+    .cover-meta{gap:8px;}
+    .card{padding:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="topbar">
+  <span class="brand"><span class="dotlogo"></span> Plantbase</span>
+  <span class="themebtn" id="themeToggle" role="button" tabindex="0">Téma</span>
+</div>
+
+<div class="deck" id="deck">
+  <div class="track" id="track">
+
+    <!-- 0: COVER -->
+    <section class="slide cover">
+      <div class="slide-inner">
+        <div class="leaf">🌿</div>
+        <div class="eyebrow">Vezetői döntéselőkészítő anyag</div>
+        <h1>Amit eddig csak a<br/><em>legnagyobb ügyfeleink</em><br/>kaptak meg — most mindenkinek jár</h1>
+        <p class="lede">Növényválasztó és gondozási asszisztens a Plantbase webshopban: a vásárló azonnal, forrással alátámasztott választ kap arra, melyik növény való a lakásába, és hogyan gondozza — a meglévő, bevált rendszerünkre építve.</p>
+        <div class="cover-meta">
+          <span class="pill">🧭 Szponzor: <b>e-commerce igazgató</b></span>
+          <span class="pill">🌱 Folyamatgazda: <b>ügyfélszolgálat vezetője</b></span>
+          <span class="pill">⏱️ Kért döntés: <b>2 hetes mért pilot</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1: A HELYZET -->
+    <section class="slide">
+      <div class="slide-inner grid2">
+        <div>
+          <div class="eyebrow">A helyzet</div>
+          <h2>A rendszerünk bevált — <em style="font-style:normal;color:var(--accent)">befelé</em></h2>
+          <p class="lede">A kollégáink hónapok óta természetes nyelven kérdeznek a katalógusunkról és a gondozási tudásbázisunkról. Ez működik, gyors, és a csapat napi szinten használja.</p>
+          <p class="lede">Az igazi kérdés viszont ez: <b style="color:var(--text)">mit kap ebből a vásárlónk?</b> Ma semmit — a tudás a falak között marad, miközben ugyanazokra a kérdésekre naponta emberi órákat költünk.</p>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <h3>✅ Amink már van</h3>
+            <p>Működő AI-motor, élő tudásbázis, katalógus-integráció, teljes naplózás és költségkontroll — mindez élesben teszteltt.</p>
+          </div>
+          <div class="card">
+            <h3>🎯 Amit most lépünk</h3>
+            <p>Nem új rendszert építünk. Ugyanazt a motort nyitjuk ki egy új, ügyfél felé néző ajtón — kockázat és fejlesztési idő nélkül.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2: A MEGOLDÁS -->
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="eyebrow">A megoldás</div>
+        <h2>Növényválasztó és gondozási asszisztens</h2>
+        <p class="lede">A vásárló a webshopban azonnal választ kap arra, melyik növény való a lakásába és hogyan kell gondozni — forrásmegjelöléssel, emberi várakozás nélkül.</p>
+        <div class="pain-row">
+          <div class="pain">
+            <div class="num">01</div>
+            <div class="txt"><b>Elérhetőség munkaidőn kívül</b><span>A chat 0–24 elérhető — a vásárló nem vár másnapig egy egyszerű kérdéssel.</span></div>
+          </div>
+          <div class="pain">
+            <div class="num">02</div>
+            <div class="txt"><b>Ismétlődő kérdések automatizálva</b><span>Öntözés, fényigény, méret — a leggyakoribb húsz kérdés mostantól emberi beavatkozás nélkül megválaszolt.</span></div>
+          </div>
+          <div class="pain">
+            <div class="num">03</div>
+            <div class="txt"><b>Személyre szabott tanácsadás — mindenkinek</b><span>Amit eddig csak a legnagyobb rendelőink kaptak meg, az most minden vásárlónak alapszolgáltatás.</span></div>
+          </div>
+        </div>
+        <div class="callout warn" style="margin-top:18px;">
+          <b>Amit tudatosan nem oldunk meg:</b> a vásárló a rendelése státuszát továbbra sem itt látja — nincs rendelés-modul, ez a jelenlegi kör kizárt scope-ja, nem hiányosság.
+        </div>
+      </div>
+    </section>
+
+    <!-- 3: ADATTÉRKÉP -->
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="eyebrow">Adattérkép</div>
+        <h2>Az adat útja — teljes átláthatóság</h2>
+        <p class="lede">Egyetlen vásárlói kérdés pontosan hova megy, mi marad nálunk, és mi az, amit soha nem küldünk ki.</p>
+
+        <div class="flow">
+          <div class="flow-node"><span class="ico">🧑‍🌾</span><b>Vásárló kérdése</b><span>a webshop böngészőjében</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="ico">🖥️</span><b>Saját szerver</b><span>a kérést egy helyen fogadja</span></div>
+        </div>
+
+        <div class="flow-branches">
+          <div class="branch external">
+            <span class="tag">Külső · OpenAI</span>
+            <b>Kérdés-embedding</b>
+            <p>Csak a kérdés szövegének vektoros reprezentációja megy ki a kereséshez — ügyféladat nem.</p>
+          </div>
+          <div class="branch internal">
+            <span class="tag">Saját adatbázis</span>
+            <b>Katalógus + tudásbázis</b>
+            <p>Csak olvasás (SELECT). Vásárlói adat nincs is ezekben a táblákban.</p>
+          </div>
+          <div class="branch external">
+            <span class="tag">Külső · Anthropic</span>
+            <b>Válaszgenerálás</b>
+            <p>A kérdés és a releváns gondozási cikkek mennek ki — ügyféladat itt sem.</p>
+          </div>
+          <div class="branch internal">
+            <span class="tag">Saját napló</span>
+            <b>Kérdés, válasz, eszkaláció</b>
+            <p>Minden interakció és eszkalációs jegy visszakereshetően naplózva — kizárólag a saját infrastruktúránkon.</p>
+          </div>
+        </div>
+
+        <div class="callout ok">
+          <b>Amit soha nem küldünk ki:</b> vásárlói név, e-mail, cím, fizetési adat, rendelésszám — ilyen adatot a rendszer ma nem is gyűjt.
+        </div>
+      </div>
+    </section>
+
+    <!-- 4: MÉRÉSI TERV -->
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="eyebrow">Mérési terv</div>
+        <h2>Honnan fogjuk tudni, hogy működik?</h2>
+        <div class="metric-row">
+          <div class="metric">
+            <div class="label">Megoldott fájdalom</div>
+            <div class="value">Kezelési idő / megkeresés</div>
+            <div class="sub">A napi automatikus naplóból számolva — azt méri, amit a use case ígért.</div>
+          </div>
+          <div class="metric">
+            <div class="label">Hiba-metrika</div>
+            <div class="value">Eszkalációs arány</div>
+            <div class="sub">Azt méri, mikor <b>nem</b> tudott segíteni a rendszer — nem csak a sikert.</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Mit mérünk</th><th>Honnan lesz adat</th><th>Riportálás</th><th>Kinek</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Kezelési idő / megkeresés</td><td>agent-napló</td><td>heti összesítő</td><td>folyamatgazda</td></tr>
+              <tr><td>Eszkalációs arány</td><td>eszkalációs napló</td><td>havi vezetői riport</td><td>szponzor</td></tr>
+              <tr><td>Átlagos eszkaláció-lezárási idő</td><td>eszkalációs napló</td><td>heti összesítő</td><td>folyamatgazda</td></tr>
+              <tr><td>Megoldatlan jegyek élesben</td><td>support-nézet</td><td>napi ellenőrzés</td><td>folyamatgazda</td></tr>
+              <tr><td>Válaszminőség</td><td>forrással ellátott válaszok aránya</td><td>heti összesítő</td><td>folyamatgazda</td></tr>
+              <tr><td>Lekérdezési költség</td><td>mért futási minta</td><td>havi vezetői riport</td><td>szponzor</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5: ÜZLETI HATÁS -->
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="eyebrow">Várható üzleti hatás</div>
+        <h2>A szám</h2>
+        <div class="bignum">
+          <span class="n">~5,6M</span>
+          <span class="u">Ft / év — ügyfélszolgálati kapacitás-megtakarítás</span>
+        </div>
+        <div class="tagset">
+          <span class="tag-chip becsult">Becsült</span>
+          <span class="tag-chip mert">Mért módszertan</span>
+          <span class="tag-chip atalany">Átalány input</span>
+        </div>
+        <div class="formula">150 megkeresés/hó × <span class="hl">70%</span> agenttel lezárva × <span class="hl">8 perc</span> megtakarítás × <span class="hl">3 360 Ft/óra</span> ≈ <span class="hl">5,6 M Ft/év</span></div>
+        <p class="lede" style="margin-top:16px;">A valódi szám a pilot mérési adataiból válik pontossá — a becslés szándékosan óvatos, egy kis léptékű forgalomra számolva.</p>
+
+        <div class="table-wrap" style="margin-top:20px;">
+          <table>
+            <thead><tr><th>Tétel</th><th>Egyszeri</th><th>Éves</th><th>Megjegyzés</th></tr></thead>
+            <tbody>
+              <tr><td>Fejlesztés</td><td>—</td><td>—</td><td>a meglévő motorra épül</td></tr>
+              <tr><td>Integráció</td><td>~1 nap</td><td>—</td><td>elkészült</td></tr>
+              <tr><td>Üzemeltetés</td><td>—</td><td>usage-alapú</td><td>mért egységköltség, adopcióval nő</td></tr>
+              <tr><td>Betanítás</td><td>~fél nap</td><td>—</td><td>kolléga-kapacitásból</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6: ROLLOUT -->
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="eyebrow">Rollout terv</div>
+        <h2>Fokozatos bevezetés, egyértelmű döntési ponttal</h2>
+        <div class="timeline">
+          <div class="tl-step"><div class="line"></div><div class="dot"></div><div class="when">1–2. hét</div><h4>Pilot</h4><p>Szűk, kijelölt felhasználói kör; folyamatos válaszminőség- és eszkalációs-arány mérés.</p></div>
+          <div class="tl-step pending"><div class="line"></div><div class="dot"></div><div class="when">2. hét vége</div><h4>Döntési pont</h4><p>Bővítünk a teljes webshopra, vagy visszavesszük — a mért adatok alapján.</p></div>
+          <div class="tl-step pending"><div class="line"></div><div class="dot"></div><div class="when">3–4. hét</div><h4>Teljes bevezetés</h4><p>Teljes webshop-forgalom; gazda kijelölve.</p></div>
+        </div>
+        <div class="callout ok" style="margin-top:10px;">
+          <b>A gazda a go-live után:</b> az ügyfélszolgálat vezetője — ő követi a napi működést és a heti eszkalációs riportot.
+        </div>
+      </div>
+    </section>
+
+    <!-- 7: KOCKÁZAT + KÉRÉS -->
+    <section class="slide">
+      <div class="slide-inner grid2">
+        <div>
+          <div class="eyebrow">Kockázatkezelés</div>
+          <h2>Beépített védelem, nem utólagos ígéret</h2>
+          <div class="risk-list">
+            <div class="risk"><span class="ico">🛡️</span><div><b>Téves tanács</b><span>Ha nincs elég megbízható forrás, a rendszer nem válaszol — embert von be.</span></div></div>
+            <div class="risk"><span class="ico">🧑‍💼</span><div><b>Emberi kapu</b><span>Minden bizonytalan eset egy kollégához kerül jóváhagyásra, mielőtt bármi kimenne.</span></div></div>
+            <div class="risk"><span class="ico">↩️</span><div><b>Visszavehetőség</b><span>Az ügyfélfelület percek alatt kikapcsolható, a belső rendszer és a katalógus érintetlen marad.</span></div></div>
+            <div class="risk"><span class="ico">🔒</span><div><b>Adatminimalizálás</b><span>Csak a nyilvános katalógus és tudásbázis megy a modellhez — ügyféladat soha.</span></div></div>
+            <div class="risk"><span class="ico">📒</span><div><b>Teljes naplózás</b><span>Minden kérdés, válasz és eszkaláció visszakereshető, státusszal együtt.</span></div></div>
+          </div>
+        </div>
+        <div class="ask-box">
+          <div class="eyebrow" style="margin-bottom:10px;">Amit kérünk</div>
+          <p class="lede">Döntést arról, hogy a rendszer <b>2 hetes, mért pilotra</b> mehet-e egy szűk, valós felhasználói körrel — döntési ponttal a pilot végén.</p>
+          <div class="table-wrap" style="margin-top:16px;">
+            <table>
+              <tbody>
+                <tr><td>Pilot indul</td><td>döntés + 1 hét</td></tr>
+                <tr><td>Döntési pont</td><td>döntés + 2 hét</td></tr>
+                <tr><td>Teljes webshop</td><td>döntés + 4 hét</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <footer class="credit">Plantbase · Vezetői döntéselőkészítő anyag</footer>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="chrome">
+  <button class="navbtn" id="prevBtn" aria-label="Előző dia">‹</button>
+  <div class="dots" id="dots"></div>
+  <button class="navbtn" id="nextBtn" aria-label="Következő dia">›</button>
+</div>
+
+<script>
+(function(){
+  var track = document.getElementById('track');
+  var slides = Array.prototype.slice.call(track.children);
+  var dotsWrap = document.getElementById('dots');
+  var progress = document.getElementById('progress');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var current = 0;
+
+  slides.forEach(function(_, i){
+    var b = document.createElement('button');
+    b.className = 'dot-btn' + (i === 0 ? ' active' : '');
+    b.setAttribute('aria-label', 'Ugrás a(z) ' + (i+1) + '. diára');
+    b.addEventListener('click', function(){ go(i); });
+    dotsWrap.appendChild(b);
+  });
+  var dots = Array.prototype.slice.call(dotsWrap.children);
+
+  function render(){
+    track.style.transform = 'translateX(-' + (current * 100) + 'vw)';
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === current); });
+    progress.style.width = (((current + 1) / slides.length) * 100) + '%';
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === slides.length - 1;
+  }
+
+  function go(i){
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    render();
+  }
+
+  prevBtn.addEventListener('click', function(){ go(current - 1); });
+  nextBtn.addEventListener('click', function(){ go(current + 1); });
+
+  window.addEventListener('keydown', function(e){
+    if (['ArrowRight','PageDown',' '].indexOf(e.key) > -1){ e.preventDefault(); go(current + 1); }
+    else if (['ArrowLeft','PageUp'].indexOf(e.key) > -1){ e.preventDefault(); go(current - 1); }
+    else if (e.key === 'Home'){ go(0); }
+    else if (e.key === 'End'){ go(slides.length - 1); }
+  });
+
+  // touch swipe
+  var touchStartX = null;
+  var deck = document.getElementById('deck');
+  deck.addEventListener('touchstart', function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
+  deck.addEventListener('touchend', function(e){
+    if (touchStartX === null) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50){ dx < 0 ? go(current + 1) : go(current - 1); }
+    touchStartX = null;
+  }, {passive:true});
+
+  // theme toggle (cycles: system -> dark -> light -> system)
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeToggle');
+  var themeOrder = ['', 'dark', 'light'];
+  var themeLabels = {'':'Téma: rendszer','dark':'Téma: sötét','light':'Téma: világos'};
+  var themeIdx = 0;
+  function applyTheme(){
+    var v = themeOrder[themeIdx];
+    if (v) root.setAttribute('data-theme', v); else root.removeAttribute('data-theme');
+    themeBtn.textContent = themeLabels[v];
+  }
+  themeBtn.addEventListener('click', function(){
+    themeIdx = (themeIdx + 1) % themeOrder.length;
+    applyTheme();
+  });
+  themeBtn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ themeBtn.click(); }});
+  applyTheme();
+
+  render();
+})();
+</script>
+</body>
+</html>
